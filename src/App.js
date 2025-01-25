@@ -1,11 +1,13 @@
-import React from "react";
+import Home from "./components/pages/Home";
+import { ThemeContextProvider } from "./components/context/ThemeContext";
+import "./App.css";
 
-function App() {
+const App = () => {
   return (
-    <div className="App">
-      <h1>AI powered legal research assistant</h1>
-    </div>
+    <ThemeContextProvider>
+      <Home />
+    </ThemeContextProvider>
   );
-}
+};
 
 export default App;
