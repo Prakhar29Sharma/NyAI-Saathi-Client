@@ -1,23 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import {queryApi} from '../services/api';
 
 const ChatContext = createContext();
 const STORAGE_KEY = 'nyai-sathi-chats';
-
-// Mock assistant responses
-const MOCK_RESPONSES = [
-  {
-    text: "According to Indian legal precedents, this matter would typically be handled under Section 24 of the Civil Procedure Code...",
-    delay: 1000
-  },
-  {
-    text: "Based on recent Supreme Court judgments, particularly in the case of XYZ vs State (2023), the approach would be...",
-    delay: 1500
-  },
-  {
-    text: "The relevant sections of the Indian Penal Code that apply here are Sections 141-149, which deal with...",
-    delay: 1200
-  }
-];
 
 export const ChatProvider = ({ children }) => {
   const [chats, setChats] = useState([]);
@@ -41,11 +26,7 @@ export const ChatProvider = ({ children }) => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
     }
   }, [chats]);
-
-  const getMockResponse = () => {
-    return MOCK_RESPONSES[Math.floor(Math.random() * MOCK_RESPONSES.length)];
-  };
-
+  
   const createNewChat = () => {
     const newChat = {
       id: Date.now().toString(),
@@ -58,7 +39,7 @@ export const ChatProvider = ({ children }) => {
     return newChat.id;
   };
 
-  const addMessageToChat = (chatId, message) => {
+  const addMessageToChat = async (chatId, message, queryType) => {
     // Add user message
     const userMessage = {
       id: Date.now().toString(),
@@ -80,12 +61,15 @@ export const ChatProvider = ({ children }) => {
       })
     );
 
-    // Add mock assistant response after delay
-    setTimeout(() => {
-      const mockResponse = MOCK_RESPONSES[Math.floor(Math.random() * MOCK_RESPONSES.length)];
+    try {
+      const chat = chats.find(c => c.id === chatId);
+      const previousMessages = chat ? chat.messages : [];
+      
+      const response = await queryApi(message, queryType, previousMessages);
+      
       const assistantMessage = {
         id: (Date.now() + 1).toString(),
-        text: mockResponse.text,
+        text: response.answer,
         isUser: false,
         timestamp: new Date().toISOString()
       };
@@ -101,7 +85,27 @@ export const ChatProvider = ({ children }) => {
           return chat;
         })
       );
-    }, 1000);
+    } catch (error) {
+      console.error("API Error:", error);
+      const errorMessage = {
+        id: (Date.now() + 1).toString(),
+        text: "Sorry, there was an error processing your request. Please try again.",
+        isUser: false,
+        timestamp: new Date().toISOString()
+      };
+
+      setChats(prevChats =>
+        prevChats.map(chat => {
+          if (chat.id === chatId) {
+            return {
+              ...chat,
+              messages: [...chat.messages, errorMessage]
+            };
+          }
+          return chat;
+        })
+      );
+    }
   };
 
   const deleteChat = (chatId) => {
@@ -115,6 +119,17 @@ export const ChatProvider = ({ children }) => {
     setIsDarkMode(!isDarkMode);
   };
 
+  // Add updateChatTitle function
+  const updateChatTitle = (chatId, newTitle) => {
+    setChats(prevChats => 
+      prevChats.map(chat => 
+        chat.id === chatId 
+          ? { ...chat, title: newTitle } 
+          : chat
+      )
+    );
+  };
+
   const value = {
     chats,
     currentChatId,
@@ -124,7 +139,8 @@ export const ChatProvider = ({ children }) => {
     addMessageToChat,
     setCurrentChatId,
     deleteChat,
-    toggleTheme
+    toggleTheme,
+    updateChatTitle // Add to context
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

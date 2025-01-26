@@ -1,95 +1,85 @@
-import React, { useState } from 'react';
-import { Box, Button, IconButton, Drawer, Divider } from '@mui/material';
+import React from 'react';
+import { Box, Button, Typography, Divider } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import SearchIcon from '@mui/icons-material/Search';
-import MenuIcon from '@mui/icons-material/Menu';
-import CloseIcon from '@mui/icons-material/Close';
 import ChatList from './ChatList';
-import SettingsBar from '../settings/SettingsBar';
-import SearchModal from './SearchModal';
+import { useChat } from '../../../context/ChatContext';
+import HomeIcon from '@mui/icons-material/Home';
 
-const Sidebar = ({ onNewChat }) => {
-  const [isOpen, setIsOpen] = useState(true);
-  const [searchOpen, setSearchOpen] = useState(false);
+const Sidebar = () => {
+  const { createNewChat, isDarkMode } = useChat();
 
   return (
-    <>
-      {/* Open Sidebar Button - Only visible when sidebar is closed */}
-      {!isOpen && (
-        <IconButton
-          onClick={() => setIsOpen(true)}
+    <Box
+      sx={{
+        width: 300,
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        bgcolor: isDarkMode ? '#1a1a2e' : '#f8f9fa',
+        borderRight: '1px solid',
+        borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.12)',
+        '& *::-webkit-scrollbar': {
+          width: '6px',
+        },
+        '& *::-webkit-scrollbar-track': {
+          background: 'transparent',
+        },
+        '& *::-webkit-scrollbar-thumb': {
+          background: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+          borderRadius: '3px',
+        }
+      }}
+    >
+      <Box sx={{ p: 2 }}>
+        <Button
+          fullWidth
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={createNewChat}
           sx={{
-            position: 'fixed',
-            left: 20,
-            top: 20,
-            zIndex: 1200,
-            bgcolor: 'background.paper',
+            py: 1,
+            bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'primary.main',
+            color: 'white',
             '&:hover': {
-              bgcolor: 'background.paper',
-            },
+              bgcolor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'primary.dark',
+            }
           }}
         >
-          <MenuIcon />
-        </IconButton>
-      )}
-
-      <Drawer
-        variant="persistent"
-        anchor="left"
-        open={isOpen}
-        sx={{
-          '& .MuiDrawer-paper': {
-            width: 260,
-            bgcolor: '#202123',
-            transition: 'width 0.3s ease'
-          }
-        }}
-      >
-        <Box sx={{ p: 2 }}>
-          <Box sx={{ 
-            display: 'flex', 
-            gap: 1, 
-            mb: 2,
-            alignItems: 'center'
-          }}>
-            <Button
-              startIcon={<AddIcon />}
-              onClick={onNewChat}
-              sx={{
-                color: 'white',
-                border: '1px solid rgba(255,255,255,0.2)',
-                flex: 1,
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' }
-              }}
-            >
-              New Chat
-            </Button>
-            <IconButton 
-              onClick={() => setSearchOpen(true)}
-              sx={{ color: 'white' }}
-            >
-              <SearchIcon />
-            </IconButton>
-            <IconButton 
-              onClick={() => setIsOpen(false)}
-              sx={{ 
-                color: 'white',
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' }
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </Box>
-          <Divider sx={{ bgcolor: 'rgba(255,255,255,0.1)' }} />
-          <ChatList />
-          <Box sx={{ mt: 'auto' }}>
-            <SettingsBar />
-          </Box>
-        </Box>
-      </Drawer>
-
-      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
-    </>
+          New Chat
+        </Button>
+      </Box>
+      
+      <Divider sx={{ 
+        borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.12)'
+      }} />
+      
+      <ChatList />
+      
+      <Divider sx={{ 
+        borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.12)'
+      }} />
+      
+      <Box sx={{
+        p: 2,
+        borderTop: '1px solid',
+        borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.12)',
+      }}>
+        <Button
+          fullWidth
+          startIcon={<HomeIcon />}
+          onClick={() => window.location.href = '/'}
+          sx={{
+            justifyContent: 'flex-start',
+            color: isDarkMode ? 'white' : 'text.primary',
+            '&:hover': {
+              bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)',
+            }
+          }}
+        >
+          Home
+        </Button>
+      </Box>
+    </Box>
   );
 };
 
