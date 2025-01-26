@@ -1,18 +1,66 @@
+const CHUNK_SIZE = 200;
+
 export const cleanTextForSpeech = (markdownText) => {
-    return markdownText
-      .replace(/```[\s\S]*?```/g, '') // Remove code blocks
-      .replace(/\[([^\]]*)\]\(([^)]*)\)/g, '$1') // Convert links to text
-      .replace(/[#*`_]/g, '') // Remove markdown symbols
-      .trim();
+  return markdownText
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/\[([^\]]*)\]\(([^)]*)\)/g, '$1')
+    .replace(/[#*`_]/g, '')
+    .trim();
+};
+
+export const speakText = (text, onEnd) => {
+  const chunks = splitIntoChunks(text);
+  let currentChunkIndex = 0;
+
+  const speakNextChunk = () => {
+    if (currentChunkIndex < chunks.length) {
+      const utterance = new SpeechSynthesisUtterance(chunks[currentChunkIndex]);
+      utterance.lang = 'en-IN';
+      utterance.rate = 0.9;
+      utterance.pitch = 1;
+
+      utterance.onend = () => {
+        currentChunkIndex++;
+        if (currentChunkIndex < chunks.length) {
+          speakNextChunk();
+        } else {
+          onEnd && onEnd();
+        }
+      };
+
+      utterance.onerror = (event) => {
+        console.error('Speech synthesis error:', event);
+        onEnd && onEnd();
+      };
+
+      window.speechSynthesis.speak(utterance);
+      return utterance;
+    }
   };
-  
-  export const speakText = (text) => {
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'en-IN';
-    utterance.rate = 1;
-    window.speechSynthesis.speak(utterance);
-  };
-  
-  export const stopSpeaking = () => {
-    window.speechSynthesis.cancel();
-  };
+
+  return speakNextChunk();
+};
+
+const splitIntoChunks = (text) => {
+  const words = text.split(' ');
+  const chunks = [];
+  let currentChunk = '';
+
+  words.forEach(word => {
+    if (currentChunk.length + word.length > CHUNK_SIZE) {
+      chunks.push(currentChunk.trim());
+      currentChunk = '';
+    }
+    currentChunk += word + ' ';
+  });
+
+  if (currentChunk) {
+    chunks.push(currentChunk.trim());
+  }
+
+  return chunks;
+};
+
+export const stopSpeaking = () => {
+  window.speechSynthesis.cancel();
+};
