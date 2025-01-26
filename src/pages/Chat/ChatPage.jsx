@@ -1,18 +1,11 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Box } from '@mui/material';
 import Sidebar from '../../components/chat/sidebar/Sidebar';
 import ChatArea from '../../components/chat/main/ChatArea';
 import { useChat } from '../../context/ChatContext';
 
 const ChatPage = () => {
-  const { createNewChat, chats } = useChat();
-
-  useEffect(() => {
-    // Create initial chat if no chats exist
-    if (chats.length === 0) {
-      createNewChat();
-    }
-  }, []);
+  const { chats } = useChat();
 
   return (
     <Box 
@@ -24,7 +17,7 @@ const ChatPage = () => {
         overflow: 'hidden'
       }}
     >
-      <Sidebar onNewChat={createNewChat} />
+      <Sidebar />
       <Box 
         component="main" 
         sx={{ 

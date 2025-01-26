@@ -1,32 +1,45 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import {queryApi} from '../services/api';
+import { queryApi } from '../services/api';
 
 const ChatContext = createContext();
 const STORAGE_KEY = 'nyai-sathi-chats';
+const CURRENT_CHAT_KEY = 'nyai-sathi-current-chat';
 
 export const ChatProvider = ({ children }) => {
-  const [chats, setChats] = useState([]);
-  const [currentChatId, setCurrentChatId] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [isDarkMode, setIsDarkMode] = useState(false);
-
-  useEffect(() => {
+  const [chats, setChats] = useState(() => {
+    // Initialize chats from localStorage
     const savedChats = localStorage.getItem(STORAGE_KEY);
-    if (savedChats) {
-      const parsedChats = JSON.parse(savedChats);
-      setChats(parsedChats);
-      if (parsedChats.length > 0) {
-        setCurrentChatId(parsedChats[0].id);
-      }
-    }
-  }, []);
+    return savedChats ? JSON.parse(savedChats) : [];
+  });
 
+  const [currentChatId, setCurrentChatId] = useState(() => {
+    // Initialize currentChatId from localStorage
+    return localStorage.getItem(CURRENT_CHAT_KEY) || null;
+  });
+
+  const [isDarkMode, setIsDarkMode] = useState(
+    localStorage.getItem('isDarkMode') === 'true'
+  );
+
+  // Save chats to localStorage whenever they change
   useEffect(() => {
-    if (chats.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
-    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
   }, [chats]);
-  
+
+  // Save current chat ID whenever it changes
+  useEffect(() => {
+    if (currentChatId) {
+      localStorage.setItem(CURRENT_CHAT_KEY, currentChatId);
+    } else {
+      localStorage.removeItem(CURRENT_CHAT_KEY);
+    }
+  }, [currentChatId]);
+
+  // Save dark mode preference
+  useEffect(() => {
+    localStorage.setItem('isDarkMode', isDarkMode);
+  }, [isDarkMode]);
+
   const createNewChat = () => {
     const newChat = {
       id: Date.now().toString(),
@@ -39,8 +52,34 @@ export const ChatProvider = ({ children }) => {
     return newChat.id;
   };
 
+  // Initialize with a new chat if no chats exist
+  useEffect(() => {
+    if (chats.length === 0) {
+      createNewChat();
+    }
+  }, []);
+
+  const deleteChat = (chatId) => {
+    setChats(prevChats => {
+      const updatedChats = prevChats.filter(chat => chat.id !== chatId);
+      if (currentChatId === chatId && updatedChats.length > 0) {
+        setCurrentChatId(updatedChats[0].id);
+      }
+      return updatedChats;
+    });
+  };
+
+  const updateChatTitle = (chatId, newTitle) => {
+    setChats(prevChats => 
+      prevChats.map(chat => 
+        chat.id === chatId 
+          ? { ...chat, title: newTitle } 
+          : chat
+      )
+    );
+  };
+
   const addMessageToChat = async (chatId, message, queryType) => {
-    // Add user message
     const userMessage = {
       id: Date.now().toString(),
       text: message,
@@ -108,39 +147,20 @@ export const ChatProvider = ({ children }) => {
     }
   };
 
-  const deleteChat = (chatId) => {
-    setChats(chats.filter(chat => chat.id !== chatId));
-    if (currentChatId === chatId) {
-      setCurrentChatId(chats[0]?.id || null);
-    }
-  };
-
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);
-  };
-
-  // Add updateChatTitle function
-  const updateChatTitle = (chatId, newTitle) => {
-    setChats(prevChats => 
-      prevChats.map(chat => 
-        chat.id === chatId 
-          ? { ...chat, title: newTitle } 
-          : chat
-      )
-    );
   };
 
   const value = {
     chats,
     currentChatId,
-    loading,
     isDarkMode,
     createNewChat,
     addMessageToChat,
     setCurrentChatId,
     deleteChat,
     toggleTheme,
-    updateChatTitle // Add to context
+    updateChatTitle
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
