@@ -1,14 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Box, TextField, IconButton, ToggleButtonGroup, ToggleButton } from '@mui/material';
+import { Box, TextField, IconButton, ToggleButtonGroup, ToggleButton, Tooltip } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import GavelIcon from '@mui/icons-material/Gavel';
 import HistoryIcon from '@mui/icons-material/History';
+import MicIcon from '@mui/icons-material/Mic';
+import MicOffIcon from '@mui/icons-material/MicOff';
+import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 import { useChat } from '../../../context/ChatContext';
 
 const InputBox = ({ queryType, onQueryTypeChange, onSend }) => {
   const [message, setMessage] = useState('');
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const { currentChatId, addMessageToChat, isDarkMode } = useChat();
+
+  const {
+    transcript,
+    listening,
+    resetTranscript,
+    browserSupportsSpeechRecognition
+  } = useSpeechRecognition();
 
   const lawQueries = [
     "What are the provisions under Section 302 IPC?",
@@ -40,6 +50,35 @@ const InputBox = ({ queryType, onQueryTypeChange, onSend }) => {
     setPlaceholderIndex(0);
   }, [queryType]);
 
+  useEffect(() => {
+    if (transcript) {
+      setMessage(transcript);
+    }
+  }, [transcript]);
+
+  // Function to handle voice output
+  const speakText = (text) => {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-IN'; // Set language to Indian English
+    utterance.rate = 1; // Adjust speed if necessary
+    utterance.pitch = 1; // Adjust pitch if necessary
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const handleVoiceInput = () => {
+    if (!browserSupportsSpeechRecognition) {
+      alert('Browser does not support speech recognition');
+      return;
+    }
+
+    if (listening) {
+      SpeechRecognition.stopListening();
+    } else {
+      resetTranscript();
+      SpeechRecognition.startListening({ continuous: true, language: 'en-IN' });
+    }
+  };
+
   const handleKeyDown = (e) => {
     if (e.key === 'Tab') {
       e.preventDefault();
@@ -54,7 +93,10 @@ const InputBox = ({ queryType, onQueryTypeChange, onSend }) => {
     e.preventDefault();
     if (message.trim() && currentChatId) {
       onSend(message);
+      speakText(message); // Speak the input message
       setMessage('');
+      SpeechRecognition.stopListening();
+      resetTranscript();
     }
   };
 
@@ -144,6 +186,15 @@ const InputBox = ({ queryType, onQueryTypeChange, onSend }) => {
               }
             }}
           />
+          <Tooltip title={listening ? "Stop Listening" : "Start Voice Input"}>
+            <IconButton 
+              onClick={handleVoiceInput}
+              color={listening ? "secondary" : "primary"}
+              disabled={!browserSupportsSpeechRecognition}
+            >
+              {listening ? <MicOffIcon /> : <MicIcon />}
+            </IconButton>
+          </Tooltip>
           <IconButton 
             type="submit"
             color="primary"
