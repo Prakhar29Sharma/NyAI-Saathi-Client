@@ -2,11 +2,20 @@ import axios from "axios";
 
 const API_BASE_URL = "http://127.0.0.1:8000/api/v1";
 
-export const queryApi = async (message) => {
+export const queryApi = async (message, queryType, previousMessages = []) => {
   try {
-    const data = JSON.stringify({query: message});
+    const endpoint = queryType === 'laws' ? '/query/laws' : '/query/judgements';
+    
+    const data = JSON.stringify({
+      query: message,
+      context: previousMessages.map(msg => ({
+        content: msg.text,
+        role: msg.isUser ? 'user' : 'assistant'
+      }))
+    });
+
     const response = await axios.post(
-      `${API_BASE_URL}/query/`,
+      `${API_BASE_URL}${endpoint}`,
       data,
       {
         headers: {
@@ -14,10 +23,11 @@ export const queryApi = async (message) => {
         },
       }
     );
-    console.log("api response", response);
+    
+    console.log(`Querying ${queryType} endpoint:`, endpoint);
     return response.data;
   } catch (error) {
-    console.error("Error querying API:", error);
-    throw new Error("Failed to fetch data from the API.");
+    console.error(`Error querying ${queryType} API:`, error);
+    throw new Error(`Failed to fetch ${queryType} data from the API.`);
   }
 };
