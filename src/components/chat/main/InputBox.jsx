@@ -1,16 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Box, TextField, IconButton, ToggleButtonGroup, ToggleButton, Tooltip } from '@mui/material';
+import { 
+  Box, TextField, IconButton, ToggleButtonGroup, ToggleButton, 
+  Tooltip, MenuItem, Select, FormControl, InputLabel 
+} from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import GavelIcon from '@mui/icons-material/Gavel';
 import HistoryIcon from '@mui/icons-material/History';
 import MicIcon from '@mui/icons-material/Mic';
 import MicOffIcon from '@mui/icons-material/MicOff';
+import TranslateIcon from '@mui/icons-material/Translate';
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 import { useChat } from '../../../context/ChatContext';
+
+const LANGUAGES = [
+  { code: 'en', name: 'English' },
+  { code: 'hi', name: 'हिंदी (Hindi)' },
+  { code: 'mr', name: 'मराठी (Marathi)' }
+];
 
 const InputBox = ({ queryType, onQueryTypeChange, onSend }) => {
   const [message, setMessage] = useState('');
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const [language, setLanguage] = useState('en');
   const { currentChatId, addMessageToChat, isDarkMode } = useChat();
 
   const {
@@ -92,8 +103,40 @@ const InputBox = ({ queryType, onQueryTypeChange, onSend }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (message.trim() && currentChatId) {
-      onSend(message);
-      speakText(message); // Speak the input message
+      // Display the original user message in the UI
+      const displayMessage = message;
+      
+      // Create API message with language instruction
+      let apiMessage = message;
+      if (language !== 'en') {
+        const langName = LANGUAGES.find(l => l.code === language)?.name.split(' ')[0];
+        apiMessage = `${message}\n\nRespond in ${langName}`;
+      }
+      
+      // Send the API message but display the original message
+      onSend(apiMessage, displayMessage);
+      
+      // Don't speak the input automatically - remove this if you want to hear the input
+      /*
+      // Update speech language based on selected language
+      const utterance = new SpeechSynthesisUtterance(message);
+      utterance.lang = language === 'en' ? 'en-IN' : 
+                      language === 'hi' ? 'hi-IN' : 
+                      language === 'mr' ? 'mr-IN' : 'en-IN';
+                      
+      // Find appropriate voice if available
+      const voices = window.speechSynthesis.getVoices();
+      const preferredVoice = voices.find(voice => 
+        voice.lang === utterance.lang && voice.localService
+      );
+      
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+      }
+      
+      window.speechSynthesis.speak(utterance);
+      */
+      
       setMessage('');
       SpeechRecognition.stopListening();
       resetTranscript();
@@ -120,36 +163,74 @@ const InputBox = ({ queryType, onQueryTypeChange, onSend }) => {
         margin: '0 auto',
         gap: 2,
       }}>
-        <ToggleButtonGroup
-          value={queryType}
-          exclusive
-          onChange={onQueryTypeChange}
-          aria-label="query type"
-          size="small"
-          sx={{
-            alignSelf: 'center',
-            bgcolor: isDarkMode ? '#252534' : 'white',
-            '& .MuiToggleButton-root': {
-              px: 3,
-              py: 0.5,
-              color: isDarkMode ? 'white' : 'text.primary',
-              borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.12)',
-              '&.Mui-selected': {
-                bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
-                color: isDarkMode ? 'white' : 'primary.main'
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 2
+        }}>
+          <ToggleButtonGroup
+            value={queryType}
+            exclusive
+            onChange={onQueryTypeChange}
+            aria-label="query type"
+            size="small"
+            sx={{
+              alignSelf: 'center',
+              bgcolor: isDarkMode ? '#252534' : 'white',
+              '& .MuiToggleButton-root': {
+                px: 3,
+                py: 0.5,
+                color: isDarkMode ? 'white' : 'text.primary',
+                borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.12)',
+                '&.Mui-selected': {
+                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+                  color: isDarkMode ? 'white' : 'primary.main'
+                }
               }
-            }
-          }}
-        >
-          <ToggleButton value="laws" aria-label="laws">
-            <GavelIcon sx={{ mr: 1, fontSize: 20 }} />
-            Laws
-          </ToggleButton>
-          <ToggleButton value="judgements" aria-label="judgements">
-            <HistoryIcon sx={{ mr: 1, fontSize: 20 }} />
-            Judgements
-          </ToggleButton>
-        </ToggleButtonGroup>
+            }}
+          >
+            <ToggleButton value="laws" aria-label="laws">
+              <GavelIcon sx={{ mr: 1, fontSize: 20 }} />
+              Laws
+            </ToggleButton>
+            <ToggleButton value="judgements" aria-label="judgements">
+              <HistoryIcon sx={{ mr: 1, fontSize: 20 }} />
+              Judgements
+            </ToggleButton>
+          </ToggleButtonGroup>
+
+          <FormControl 
+            size="small"
+            sx={{
+              minWidth: 120,
+              bgcolor: isDarkMode ? '#252534' : 'white',
+              borderRadius: 1,
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.12)'
+              },
+              '& .MuiSelect-select': {
+                color: isDarkMode ? 'white' : 'text.primary',
+              },
+              '& .MuiSvgIcon-root': {
+                color: isDarkMode ? 'white' : 'text.primary',
+              }
+            }}
+          >
+            <Select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              displayEmpty
+              startAdornment={<TranslateIcon sx={{ mr: 1, fontSize: 20 }} />}
+            >
+              {LANGUAGES.map((lang) => (
+                <MenuItem key={lang.code} value={lang.code}>
+                  {lang.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
 
         <Box sx={{ 
           display: 'flex',

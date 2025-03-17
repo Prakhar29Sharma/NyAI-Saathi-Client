@@ -10,7 +10,7 @@ import ProfileMenu from '../profile/ProfileMenu';
 const ChatArea = () => {
   const { 
     currentChatId, 
-    chats, 
+    chats,
     isDarkMode, 
     toggleTheme,
     addMessageToChat 
@@ -20,10 +20,17 @@ const ChatArea = () => {
 
   const currentChat = chats.find(chat => chat.id === currentChatId);
 
-  const handleSendMessage = async (message) => {
+  const handleSendMessage = async (apiMessage, displayMessage) => {
+    if (!currentChatId) return;
+    
     setIsTyping(true);
     try {
-      await addMessageToChat(currentChatId, message, queryType);
+      // Use addMessageToChat from context instead of directly modifying state
+      // This will handle adding the user's message to the chat
+      await addMessageToChat(currentChatId, apiMessage, queryType, displayMessage);
+    } catch (error) {
+      console.error("API Error:", error);
+      // Error handling is now done in the context
     } finally {
       setIsTyping(false);
     }
