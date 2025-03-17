@@ -8,6 +8,7 @@ import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 import { useChat } from '../../../context/ChatContext';
 import { LoadingSpinner } from '../../common';
 import { cleanTextForSpeech, stopSpeaking } from '../../../utils/textToSpeech';
+import NyaiLogo from '../../../assets/images/logo.png';
 
 // Add language-voice mapping
 const LANGUAGE_VOICES = {
@@ -174,9 +175,34 @@ const MessageList = ({ messages = [], isTyping = false }) => {
               : '0 2px 4px rgba(0,0,0,0.05)'
           }}
         >
-          <Avatar sx={{ bgcolor: message.isUser ? 'primary.main' : 'secondary.main' }}>
-            {message.isUser ? <PersonIcon /> : <SmartToyIcon />}
-          </Avatar>
+          {/* Replace Avatar with logo or user icon */}
+          <Box
+            sx={{
+              width: 40, 
+              height: 40,
+              borderRadius: message.isUser ? '50%' : '8px',
+              overflow: 'hidden',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              bgcolor: message.isUser ? 'primary.main' : 'transparent'
+            }}
+          >
+            {message.isUser ? (
+              <PersonIcon style={{ color: '#fff' }} />
+            ) : (
+              <img 
+                src={NyaiLogo} 
+                alt="Nyai Saathi" 
+                style={{ 
+                  width: 40, 
+                  height: 40, 
+                  objectFit: 'contain'
+                }} 
+              />
+            )}
+          </Box>
+
           <Box sx={{ flex: 1 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <Box sx={{ flex: 1 }}>
@@ -327,9 +353,28 @@ const MessageList = ({ messages = [], isTyping = false }) => {
             borderRadius: 2
           }}
         >
-          <Avatar sx={{ bgcolor: 'secondary.main' }}>
-            <SmartToyIcon />
-          </Avatar>
+          {/* Update the typing indicator logo too */}
+          <Box
+            sx={{
+              width: 40, 
+              height: 40,
+              borderRadius: '8px',
+              overflow: 'hidden',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <img 
+              src={NyaiLogo} 
+              alt="Nyai Saathi" 
+              style={{ 
+                width: 40, 
+                height: 40, 
+                objectFit: 'contain'
+              }} 
+            />
+          </Box>
           <Box sx={{ flex: 1, display: 'flex', alignItems: 'center' }}>
             <LoadingSpinner size={24} text="" showText={false} />
           </Box>
