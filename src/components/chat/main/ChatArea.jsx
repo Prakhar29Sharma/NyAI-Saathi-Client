@@ -25,12 +25,13 @@ const ChatArea = () => {
     
     setIsTyping(true);
     try {
-      // Use addMessageToChat from context instead of directly modifying state
-      // This will handle adding the user's message to the chat
-      await addMessageToChat(currentChatId, apiMessage, queryType, displayMessage);
+      // Use addMessageToChat from context to send the message
+      const result = await addMessageToChat(currentChatId, apiMessage, queryType, displayMessage);
+      return result;
     } catch (error) {
       console.error("API Error:", error);
       // Error handling is now done in the context
+      return null;
     } finally {
       setIsTyping(false);
     }

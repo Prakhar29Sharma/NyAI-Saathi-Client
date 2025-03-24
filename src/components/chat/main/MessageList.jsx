@@ -2,74 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Box, Typography, Avatar, IconButton, Tooltip } from '@mui/material';
 import ReactMarkdown from 'react-markdown';
 import PersonIcon from '@mui/icons-material/Person';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 import { useChat } from '../../../context/ChatContext';
 import { LoadingSpinner } from '../../common';
-import { cleanTextForSpeech, stopSpeaking } from '../../../utils/textToSpeech';
+import { speakText, stopSpeaking, cleanTextForSpeech, initVoices } from '../../../utils/textToSpeech';
 import NyaiLogo from '../../../assets/images/logo.png';
-
-// Add language-voice mapping
-const LANGUAGE_VOICES = {
-  'en': 'en-IN',
-  'hi': 'hi-IN',
-  'mr': 'mr-IN'
-};
-
-// Helper to detect language of text for proper speech
-const detectLanguage = (text) => {
-  // Simple detection based on script characters
-  const devanagariPattern = /[\u0900-\u097F]/; // Hindi, Marathi
-  
-  if (devanagariPattern.test(text)) {
-    // Check for Marathi-specific characters or words if needed
-    if (text.includes('ी') || text.includes('मराठी')) {
-      return 'mr';
-    }
-    return 'hi';
-  }
-  
-  return 'en'; // Default to English
-};
-
-const speakText = (text, onEnd) => {
-  window.speechSynthesis.cancel();
-  
-  // Detect language of text
-  const detectedLang = detectLanguage(text);
-  const langCode = LANGUAGE_VOICES[detectedLang] || 'en-IN';
-  
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = langCode;
-  
-  // Adjust rate and pitch for better multilingual performance
-  utterance.rate = detectedLang === 'en' ? 1 : 0.9;
-  utterance.pitch = 1;
-  
-  // Find appropriate voice if available
-  const voices = window.speechSynthesis.getVoices();
-  const preferredVoice = voices.find(voice => 
-    voice.lang.startsWith(langCode.split('-')[0]) && 
-    voice.localService
-  );
-  
-  if (preferredVoice) {
-    utterance.voice = preferredVoice;
-  }
-  
-  utterance.onend = () => {
-    onEnd && onEnd();
-  };
-  
-  utterance.onerror = (event) => {
-    console.error('Speech synthesis error:', event);
-    onEnd && onEnd();
-  };
-  
-  window.speechSynthesis.speak(utterance);
-  return utterance;
-};
 
 const formatTime = (timestamp) => {
   const date = new Date(timestamp);
@@ -88,32 +26,18 @@ const MessageList = ({ messages = [], isTyping = false }) => {
 
   // Load available voices when component mounts
   useEffect(() => {
-    const loadVoices = () => {
-      window.speechSynthesis.getVoices();
-    };
-    
-    loadVoices();
-    
-    // Some browsers need this event to load voices
-    if (window.speechSynthesis) {
-      window.speechSynthesis.onvoiceschanged = loadVoices;
-    }
-    
-    return () => {
-      if (window.speechSynthesis) {
-        window.speechSynthesis.onvoiceschanged = null;
-      }
-    };
+    const cleanup = initVoices();
+    return cleanup;
   }, []);
 
   const handleSpeak = (message) => {
     if (speakingMessageId === message.id) {
-      window.speechSynthesis.cancel();
+      stopSpeaking();
       setSpeakingMessageId(null);
       setCurrentUtterance(null);
     } else {
-      window.speechSynthesis.cancel();
-      const cleanText = message.text.replace(/```[\s\S]*?```/g, '').replace(/\[([^\]]*)\]\(([^)]*)\)/g, '$1').replace(/[#*`_]/g, '').trim();
+      stopSpeaking();
+      const cleanText = cleanTextForSpeech(message.text);
       
       const utterance = speakText(cleanText, () => {
         setSpeakingMessageId(null);
