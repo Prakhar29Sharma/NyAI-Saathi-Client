@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Box } from '@mui/material';
+import { Box, useMediaQuery, useTheme } from '@mui/material';
 
 const SiriWaveform = ({ isActive, isDarkMode, size = 200 }) => {
   const canvasRef = useRef(null);
@@ -8,6 +8,8 @@ const SiriWaveform = ({ isActive, isDarkMode, size = 200 }) => {
   const micStreamRef = useRef(null);
   const audioContextRef = useRef(null);
   const audioLevelsRef = useRef([]);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
   // Enhanced Audio setup with higher sensitivity
   useEffect(() => {
@@ -19,18 +21,24 @@ const SiriWaveform = ({ isActive, isDarkMode, size = 200 }) => {
         
         analyserRef.current = audioContextRef.current.createAnalyser();
         // Smaller FFT size for faster response
-        analyserRef.current.fftSize = 128; 
+        analyserRef.current.fftSize = isMobile ? 64 : 128; // Even smaller for mobile 
         // Lower smoothing for more responsive movement
-        analyserRef.current.smoothingTimeConstant = 0.5; // Even less smoothing for better responsiveness
+        analyserRef.current.smoothingTimeConstant = isMobile ? 0.4 : 0.5; // Less smoothing on mobile
         
         if (isActive) {
-          const stream = await navigator.mediaDevices.getUserMedia({ 
+          // Use more specific constraints for mobile
+          const constraints = { 
             audio: { 
               echoCancellation: true,
               noiseSuppression: true,
-              autoGainControl: false // Disable auto gain for better sensitivity
+              autoGainControl: isMobile ? true : false, // Enable auto gain on mobile
+              // Try to get higher quality on mobile
+              sampleRate: 48000,
+              sampleSize: 16
             } 
-          });
+          };
+          
+          const stream = await navigator.mediaDevices.getUserMedia(constraints);
           
           micStreamRef.current = stream;
           const source = audioContextRef.current.createMediaStreamSource(stream);
@@ -44,7 +52,7 @@ const SiriWaveform = ({ isActive, isDarkMode, size = 200 }) => {
     if (isActive) {
       setupAudio();
       // Initialize audio levels array
-      audioLevelsRef.current = Array(10).fill(0);
+      audioLevelsRef.current = Array(isMobile ? 6 : 10).fill(0);
     }
     
     return () => {
@@ -52,7 +60,7 @@ const SiriWaveform = ({ isActive, isDarkMode, size = 200 }) => {
         micStreamRef.current.getTracks().forEach(track => track.stop());
       }
     };
-  }, [isActive]);
+  }, [isActive, isMobile]);
   
   // Enhanced animation with increased sensitivity
   useEffect(() => {
@@ -64,10 +72,10 @@ const SiriWaveform = ({ isActive, isDarkMode, size = 200 }) => {
     const height = canvas.height;
     const centerY = height / 2;
     
-    // Animation properties - increased wave count for more detail
-    const waveCount = 5; // More waves for richer visualization
-    const maxAmplitude = height / 3; // Larger max amplitude
-    const frequency = 2.2; // Slightly higher frequency for more movement
+    // Animation properties - adjusted for mobile
+    const waveCount = isMobile ? 3 : 5; // Fewer waves for mobile for better performance
+    const maxAmplitude = height / (isMobile ? 4 : 3); // Smaller max amplitude on mobile
+    const frequency = isMobile ? 1.8 : 2.2; // Adjusted frequency for mobile
     
     // Enhanced color palette
     const waveColors = isDarkMode 
@@ -106,8 +114,8 @@ const SiriWaveform = ({ isActive, isDarkMode, size = 200 }) => {
         
         // Focus more on the mid-range frequencies where voice is prominent
         // Skip the first few bins (often contain noise)
-        const startBin = Math.floor(bufferLength * 0.1);
-        const endBin = Math.floor(bufferLength * 0.9);
+        const startBin = Math.floor(bufferLength * (isMobile ? 0.05 : 0.1));
+        const endBin = Math.floor(bufferLength * (isMobile ? 0.95 : 0.9));
         
         for (let i = startBin; i < endBin; i++) {
           // Convert to -128 to 127 range and get absolute deviation from center
@@ -116,8 +124,10 @@ const SiriWaveform = ({ isActive, isDarkMode, size = 200 }) => {
           // Also add frequency data for better sensitivity
           const freqValue = freqArray[i] / 255;
           
-          // Combined value with higher weight for time domain data
-          const combinedValue = (value / 128) * 0.7 + freqValue * 0.3;
+          // Combined value with higher weight for time domain data on mobile
+          const combinedValue = isMobile ?
+            (value / 128) * 0.8 + freqValue * 0.2 :
+            (value / 128) * 0.7 + freqValue * 0.3;
           
           sum += combinedValue;
           count++;
@@ -128,7 +138,7 @@ const SiriWaveform = ({ isActive, isDarkMode, size = 200 }) => {
         
         // Add to history and maintain fixed length
         audioLevelsRef.current.push(instantEnergy);
-        if (audioLevelsRef.current.length > 10) {
+        if (audioLevelsRef.current.length > (isMobile ? 6 : 10)) {
           audioLevelsRef.current.shift();
         }
         
@@ -136,9 +146,10 @@ const SiriWaveform = ({ isActive, isDarkMode, size = 200 }) => {
         const avgEnergy = audioLevelsRef.current.reduce((a, b) => a + b, 0) / 
                          audioLevelsRef.current.length;
         
-        // Apply non-linear mapping to increase sensitivity to quiet sounds
-        // Even more aggressive curve to boost lower levels
-        const energyFactor = Math.pow(avgEnergy * 4 + 0.2, 0.7); 
+        // Apply more aggressive curve on mobile for better visibility of input
+        const energyFactor = isMobile ? 
+          Math.pow(avgEnergy * 6 + 0.3, 0.6) :  // More aggressive for mobile
+          Math.pow(avgEnergy * 4 + 0.2, 0.7);   // Original desktop curve
         
         // Draw each wave with enhanced energy factor
         for (let w = 0; w < waveCount; w++) {
@@ -212,8 +223,8 @@ const SiriWaveform = ({ isActive, isDarkMode, size = 200 }) => {
           const b = parseInt(matches[3], 10);
           const a = parseFloat(matches[4]);
           
-          // Add intensity to color based on energy
-          const boost = Math.floor(energyFactor * 15); 
+          // Add intensity to color based on energy - more vibrant on mobile
+          const boost = Math.floor(energyFactor * (isMobile ? 25 : 15)); 
           const newR = Math.min(255, r + boost);
           const newG = Math.min(255, g + boost);
           
@@ -235,7 +246,7 @@ const SiriWaveform = ({ isActive, isDarkMode, size = 200 }) => {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isActive, size, isDarkMode]);
+  }, [isActive, size, isDarkMode, isMobile]);
   
   return (
     <Box

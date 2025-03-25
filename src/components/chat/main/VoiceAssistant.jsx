@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Box, Typography, IconButton, Dialog, 
-  DialogContent, Fade, useMediaQuery, useTheme
+  DialogContent, Fade, useMediaQuery, useTheme,
+  Button, Alert, CircularProgress
 } from '@mui/material';
 import MicIcon from '@mui/icons-material/Mic';
 import MicOffIcon from '@mui/icons-material/MicOff';
@@ -81,11 +82,15 @@ const chunkText = (text, wordsPerChunk) => {
 
 const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse }) => {
   const { isDarkMode } = useChat();
-  // States: greeting, listening, processing, received
+  // States: greeting, listening, processing, received, permission, error
   const [status, setStatus] = useState('greeting'); 
   const [assistantText, setAssistantText] = useState('');
   const [processingText, setProcessingText] = useState('');
   const [currentSpeech, setCurrentSpeech] = useState(null);
+  const [permissionError, setPermissionError] = useState(false);
+  const [recognitionError, setRecognitionError] = useState('');
+  const [isListeningActive, setIsListeningActive] = useState(false);
+  const recognitionTimeout = useRef(null);
   
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -96,16 +101,44 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
     transcript, 
     listening, 
     resetTranscript, 
-    browserSupportsSpeechRecognition 
+    browserSupportsSpeechRecognition,
+    isMicrophoneAvailable
   } = useSpeechRecognition();
+
+  // Check for microphone permission when opened
+  useEffect(() => {
+    if (open) {
+      if (!browserSupportsSpeechRecognition) {
+        setStatus('error');
+        setAssistantText('Your browser does not support speech recognition. Please try using Chrome or Edge.');
+        return;
+      }
+
+      const checkMicrophonePermission = async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          stream.getTracks().forEach(track => track.stop());
+          setPermissionError(false);
+        } catch (err) {
+          console.error('Microphone permission error:', err);
+          setPermissionError(true);
+          setStatus('permission');
+          setAssistantText('Microphone access is required for voice recognition.');
+        }
+      };
+      
+      checkMicrophonePermission();
+    }
+  }, [open, browserSupportsSpeechRecognition]);
 
   // Step 1: Greet the user
   useEffect(() => {
-    if (open) {
+    if (open && !permissionError && status !== 'error') {
       // Reset everything when opening
       setStatus('greeting');
       setAssistantText('');
       resetTranscript();
+      setRecognitionError('');
       
       const greetingText = "Hello! How can I help you today?";
       setAssistantText(greetingText);
@@ -114,8 +147,7 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
       setTimeout(() => {
         speak(greetingText, () => {
           // After greeting, start listening
-          setStatus('listening');
-          SpeechRecognition.startListening({ continuous: true, language: 'en-IN' });
+          startListening();
         });
       }, 500);
     } else {
@@ -128,10 +160,67 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
     return () => {
       window.speechSynthesis.cancel();
       SpeechRecognition.stopListening();
+      if (recognitionTimeout.current) {
+        clearTimeout(recognitionTimeout.current);
+      }
     };
-  }, [open, resetTranscript]);
+  }, [open, resetTranscript, permissionError]);
+
+  // Monitor listening status with a watchdog timer
+  useEffect(() => {
+    if (listening) {
+      setIsListeningActive(true);
+      // Clear any previous timeout
+      if (recognitionTimeout.current) {
+        clearTimeout(recognitionTimeout.current);
+      }
+      
+      // Set a timeout to check if recognition is stalled (20 seconds)
+      recognitionTimeout.current = setTimeout(() => {
+        // If still listening after timeout, try restarting
+        if (listening) {
+          console.log("Restarting speech recognition due to possible stall");
+          SpeechRecognition.stopListening();
+          setTimeout(() => {
+            startListening();
+          }, 500);
+        }
+      }, 20000);
+    } else {
+      if (isListeningActive && status === 'listening') {
+        // If we were listening but stopped unexpectedly (not by our command)
+        if (!transcript.trim()) {
+          // If no transcript, try again
+          console.log("Recognition stopped without input, restarting...");
+          setTimeout(() => {
+            startListening();
+          }, 300);
+        }
+      }
+    }
+    
+    return () => {
+      if (recognitionTimeout.current) {
+        clearTimeout(recognitionTimeout.current);
+      }
+    };
+  }, [listening, status, transcript]);
   
-  // Check if response is received - MODIFIED
+  const startListening = () => {
+    setStatus('listening');
+    try {
+      SpeechRecognition.startListening({ 
+        continuous: true, 
+        language: 'en-IN',
+        interimResults: true
+      });
+    } catch (err) {
+      console.error("Error starting speech recognition:", err);
+      setRecognitionError("There was a problem starting voice recognition.");
+    }
+  };
+  
+  // Check if response is received
   useEffect(() => {
     if (status === 'processing' && lastResponse) {
       setStatus('received');
@@ -170,7 +259,7 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
           // Process the request without affecting the input box
           handleProcessSpeech(transcript);
         }
-      }, 1500); // Adjust time as needed to detect end of speech
+      }, isMobile ? 2000 : 1500); // Slightly longer timeout on mobile
       
       return () => clearTimeout(timer);
     }
@@ -193,8 +282,7 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
       setAssistantText("I'm sorry, I couldn't process that. Please try again.");
       speak("I'm sorry, I couldn't process that. Please try again.", () => {
         resetTranscript();
-        setStatus('listening');
-        SpeechRecognition.startListening({ continuous: true, language: 'en-IN' });
+        startListening();
       });
     }
   }, [onSendMessage, resetTranscript]);
@@ -206,11 +294,36 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
       if (status === 'listening' && transcript) {
         setStatus('processing');
         handleProcessSpeech(transcript);
+      } else {
+        setStatus('greeting');
       }
     } else {
       resetTranscript();
-      setStatus('listening');
-      SpeechRecognition.startListening({ continuous: true, language: 'en-IN' });
+      startListening();
+    }
+  };
+  
+  // Handle manual permission request
+  const handleRequestPermission = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(track => track.stop());
+      setPermissionError(false);
+      
+      // Reset to greeting status
+      setStatus('greeting');
+      const greetingText = "Hello! How can I help you today?";
+      setAssistantText(greetingText);
+      
+      setTimeout(() => {
+        speak(greetingText, () => {
+          startListening();
+        });
+      }, 500);
+    } catch (err) {
+      console.error('Microphone permission error:', err);
+      setPermissionError(true);
+      setAssistantText('Voice input requires microphone access. Please enable it in your browser settings.');
     }
   };
   
@@ -227,10 +340,16 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
       currentSpeech.cancel();
     }
     
+    // Clear any timeouts
+    if (recognitionTimeout.current) {
+      clearTimeout(recognitionTimeout.current);
+    }
+    
     // Call the parent component's onClose function
     onClose();
   };
   
+  // Special cases for error states
   if (!browserSupportsSpeechRecognition) {
     return (
       <Dialog 
@@ -241,10 +360,51 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
         fullScreen={fullScreen}
       >
         <DialogContent>
-          <Typography>
-            Your browser doesn't support speech recognition.
-            Please use Chrome or Edge for this feature.
-          </Typography>
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <Typography variant="h6" gutterBottom>
+              Browser Not Supported
+            </Typography>
+            <Typography sx={{ mb: 3 }}>
+              Your browser doesn't support speech recognition.
+              Please use Chrome or Edge for this feature.
+            </Typography>
+            <Button variant="contained" onClick={onClose}>
+              Close
+            </Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+  
+  // Permission error UI
+  if (permissionError && status === 'permission') {
+    return (
+      <Dialog 
+        open={open} 
+        onClose={onClose}
+        fullWidth 
+        maxWidth="sm"
+        fullScreen={fullScreen}
+      >
+        <DialogContent>
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <Typography variant="h6" gutterBottom color="error">
+              Microphone Access Required
+            </Typography>
+            <Typography sx={{ mb: 3 }}>
+              Voice Assistant needs access to your microphone. 
+              Please grant permission in your browser settings.
+            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
+              <Button variant="outlined" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button variant="contained" onClick={handleRequestPermission}>
+                Request Permission
+              </Button>
+            </Box>
+          </Box>
         </DialogContent>
       </Dialog>
     );
@@ -289,6 +449,33 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
           </IconButton>
         </Box>
         
+        {recognitionError && (
+          <Alert 
+            severity="warning" 
+            sx={{ 
+              width: '100%', 
+              mb: 2,
+              '& .MuiAlert-message': {
+                width: '100%'
+              }
+            }}
+            action={
+              <Button 
+                color="inherit" 
+                size="small" 
+                onClick={() => {
+                  setRecognitionError('');
+                  startListening();
+                }}
+              >
+                Try Again
+              </Button>
+            }
+          >
+            {recognitionError}
+          </Alert>
+        )}
+        
         <Box sx={{
           display: 'flex',
           flexDirection: 'column',
@@ -323,6 +510,30 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
             />
           </Box>
           
+          {/* Status indicator */}
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 1
+          }}>
+            <Box sx={{
+              width: 10,
+              height: 10,
+              borderRadius: '50%',
+              bgcolor: listening ? '#4caf50' : '#ff9800',
+              animation: listening ? 'pulse 1.5s infinite' : 'none',
+              '@keyframes pulse': {
+                '0%': { opacity: 0.6, transform: 'scale(1)' },
+                '50%': { opacity: 1, transform: 'scale(1.2)' },
+                '100%': { opacity: 0.6, transform: 'scale(1)' }
+              }
+            }} />
+            <Typography variant="caption" color="text.secondary">
+              {listening ? 'Listening...' : status === 'processing' ? 'Processing...' : 'Ready'}
+            </Typography>
+          </Box>
+          
           {/* Main area with siri animation */}
           <Box sx={{ width: '100%', position: 'relative', py: 2 }}>
             <Box sx={{ 
@@ -337,7 +548,7 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
               {/* Siri waveform */}
               {(status === 'listening' || status === 'greeting') && (
                 <SiriWaveform 
-                  isActive={status === 'listening'} 
+                  isActive={listening} 
                   isDarkMode={isDarkMode}
                   size={isMobile ? 240 : 280}
                 />
@@ -425,6 +636,25 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
             >
               {assistantText}
             </Typography>
+            
+            {/* Mic toggle button - more prominent for mobile */}
+            {status === 'listening' && (
+              <IconButton
+                onClick={handleToggleListen}
+                size="large"
+                sx={{
+                  my: 2,
+                  bgcolor: listening ? 'primary.main' : 'grey.300',
+                  color: listening ? 'white' : 'text.primary',
+                  p: { xs: 1.5, sm: 2 },
+                  '&:hover': {
+                    bgcolor: listening ? 'primary.dark' : 'grey.400',
+                  }
+                }}
+              >
+                {listening ? <MicIcon fontSize="large" /> : <MicOffIcon fontSize="large" />}
+              </IconButton>
+            )}
             
             {/* Fun little bounce dots below text when processing */}
             {(status === 'processing' || status === 'received') && (
