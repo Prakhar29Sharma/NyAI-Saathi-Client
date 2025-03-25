@@ -13,9 +13,12 @@ const HeroSection = () => {
   const handleStartChat = () => {
     const isLoggedIn = localStorage.getItem('isLoggedIn');
     if (isLoggedIn) {
-      createNewChat();
+      // Create a new chat and navigate to chat page
+      const newChatId = createNewChat();
+      localStorage.setItem('userEmail', localStorage.getItem('userEmail') || 'user@example.com');
       navigate('/chat');
     } else {
+      // Open login modal if not logged in
       setLoginModalOpen(true);
     }
   };
@@ -81,6 +84,7 @@ const HeroSection = () => {
             variant="h4" 
             sx={{ 
               mb: 5,
+              fontSize: { xs: '1.5rem', md: '2.125rem' },
               textShadow: '1px 1px 2px rgba(0,0,0,0.3)'
             }}
           >
@@ -95,9 +99,9 @@ const HeroSection = () => {
             sx={{ 
               bgcolor: '#ffffff',
               color: '#000000',
-              px: 6,
-              py: 2,
-              fontSize: '1.2rem',
+              px: { xs: 4, md: 6 },
+              py: { xs: 1.5, md: 2 },
+              fontSize: { xs: '1rem', md: '1.2rem' },
               transition: 'all 0.3s ease',
               '&:hover': {
                 transform: 'translateY(-5px)',

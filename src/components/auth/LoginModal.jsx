@@ -12,6 +12,13 @@ import { useNavigate } from 'react-router-dom';
 const LoginModal = ({ open, onClose }) => {
   const navigate = useNavigate();
 
+  const handleLogin = () => {
+    // Close modal first
+    onClose();
+    // Navigate to login page
+    navigate('/login');
+  };
+
   return (
     <Dialog 
       open={open} 
@@ -40,7 +47,7 @@ const LoginModal = ({ open, onClose }) => {
         </Button>
         <Button 
           variant="contained"
-          onClick={() => navigate('/login')}
+          onClick={handleLogin}
           sx={{
             bgcolor: '#000000',
             color: '#ffffff',
