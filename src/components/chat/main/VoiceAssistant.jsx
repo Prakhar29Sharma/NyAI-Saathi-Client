@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Box, Typography, IconButton, Dialog, 
-  DialogContent, Fade 
+  DialogContent, Fade, useMediaQuery, useTheme
 } from '@mui/material';
 import MicIcon from '@mui/icons-material/Mic';
 import MicOffIcon from '@mui/icons-material/MicOff';
@@ -86,6 +86,10 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
   const [assistantText, setAssistantText] = useState('');
   const [processingText, setProcessingText] = useState('');
   const [currentSpeech, setCurrentSpeech] = useState(null);
+  
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
   
   // Use speech recognition ONLY within this component
   const { 
@@ -234,6 +238,7 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
         onClose={onClose}
         fullWidth 
         maxWidth="sm"
+        fullScreen={fullScreen}
       >
         <DialogContent>
           <Typography>
@@ -251,9 +256,10 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
       onClose={handleModalClose}
       fullWidth 
       maxWidth="sm"
+      fullScreen={fullScreen}
       sx={{
         '& .MuiDialog-paper': {
-          borderRadius: '16px',
+          borderRadius: fullScreen ? '0' : '16px',
           overflow: 'hidden'
         }
       }}
@@ -261,7 +267,7 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
       <DialogContent sx={{
         bgcolor: isDarkMode ? '#121212' : '#f8f8f8',
         color: isDarkMode ? 'white' : 'text.primary',
-        p: 4,
+        p: { xs: 2, sm: 4 },
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center'
@@ -274,7 +280,7 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
         }}>
           <IconButton 
             onClick={handleModalClose} 
-            size="medium"
+            size={isMobile ? "small" : "medium"}
             sx={{ 
               color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' 
             }}
@@ -288,17 +294,17 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          minHeight: '350px',
+          minHeight: { xs: '300px', sm: '350px' },
           width: '100%',
           textAlign: 'center',
-          gap: 4,
+          gap: { xs: 2, sm: 4 },
           position: 'relative'
         }}>
           {/* Logo at top */}
           <Box
             sx={{
-              width: 60,
-              height: 60,
+              width: { xs: 50, sm: 60 },
+              height: { xs: 50, sm: 60 },
               borderRadius: '16px',
               overflow: 'hidden',
               display: 'flex',
@@ -321,7 +327,7 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
           <Box sx={{ width: '100%', position: 'relative', py: 2 }}>
             <Box sx={{ 
               width: '100%', 
-              height: 150, // Fixed height
+              height: { xs: 120, sm: 150 }, // Responsive fixed height
               position: 'relative',
               mb: 2,
               display: 'flex',
@@ -333,7 +339,7 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
                 <SiriWaveform 
                   isActive={status === 'listening'} 
                   isDarkMode={isDarkMode}
-                  size={280}
+                  size={isMobile ? 240 : 280}
                 />
               )}
               
@@ -341,8 +347,8 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
               {(status === 'processing' || status === 'received') && (
                 <Box sx={{ 
                   position: 'relative',
-                  width: 100,
-                  height: 100,
+                  width: { xs: 80, sm: 100 },
+                  height: { xs: 80, sm: 100 },
                   margin: '0 auto' // Center horizontally
                 }}>
                   {/* Outer rotating circle */}
@@ -365,10 +371,10 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
                   {/* Middle rotating circle */}
                   <Box sx={{
                     position: 'absolute',
-                    top: 15,
-                    left: 15,
-                    right: 15,
-                    bottom: 15,
+                    top: '15%',
+                    left: '15%',
+                    right: '15%',
+                    bottom: '15%',
                     border: '2px solid transparent',
                     borderTopColor: 'secondary.main',
                     borderRadius: '50%',
@@ -378,10 +384,10 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
                   {/* Inner rotating circle */}
                   <Box sx={{
                     position: 'absolute',
-                    top: 30,
-                    left: 30,
-                    right: 30,
-                    bottom: 30,
+                    top: '30%',
+                    left: '30%',
+                    right: '30%',
+                    bottom: '30%',
                     border: '2px solid transparent',
                     borderTopColor: 'error.main',
                     borderRadius: '50%',
@@ -394,8 +400,8 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
                     top: '50%',
                     left: '50%',
                     transform: 'translate(-50%, -50%)',
-                    width: 12,
-                    height: 12,
+                    width: { xs: 10, sm: 12 },
+                    height: { xs: 10, sm: 12 },
                     backgroundColor: 'primary.main',
                     borderRadius: '50%',
                     animation: 'pulse 1s ease-in-out infinite alternate',
@@ -413,7 +419,7 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
               variant="h6" 
               sx={{ 
                 fontWeight: 500, 
-                fontSize: '1.25rem',
+                fontSize: { xs: '1.1rem', sm: '1.25rem' },
                 mb: 2
               }}
             >
@@ -433,8 +439,8 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
                   display: 'flex', 
                   mb: 1,
                   '& > div': {
-                    width: 8,
-                    height: 8,
+                    width: { xs: 6, sm: 8 },
+                    height: { xs: 6, sm: 8 },
                     margin: '0 4px',
                     borderRadius: '50%',
                     backgroundColor: 'primary.main',
@@ -466,7 +472,8 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
                 <Typography variant="body2" sx={{ 
                   color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
                   fontStyle: 'italic',
-                  mt: 1
+                  mt: 1,
+                  fontSize: { xs: '0.8rem', sm: '0.875rem' }
                 }}>
                   {status === 'received' ? 'Preparing your response...' : 'Working on something brilliant for you...'}
                 </Typography>
@@ -479,9 +486,9 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
                   sx={{ 
                     mt: 2, 
                     color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)',
-                    fontSize: '1.1rem',
+                    fontSize: { xs: '0.95rem', sm: '1.1rem' },
                     fontWeight: 400,
-                    maxWidth: '80%',
+                    maxWidth: '90%',
                     mx: 'auto'
                   }}
                 >

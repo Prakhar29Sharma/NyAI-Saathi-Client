@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Box, TextField, IconButton, ToggleButtonGroup, ToggleButton, 
-  Tooltip, MenuItem, Select, FormControl
+  Tooltip, MenuItem, Select, FormControl, useMediaQuery, useTheme, Menu
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import GavelIcon from '@mui/icons-material/Gavel';
 import HistoryIcon from '@mui/icons-material/History';
 import MicIcon from '@mui/icons-material/Mic';
 import TranslateIcon from '@mui/icons-material/Translate';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { useChat } from '../../../context/ChatContext';
 import VoiceAssistant from './VoiceAssistant';
 
@@ -23,7 +24,11 @@ const InputBox = ({ queryType, onQueryTypeChange, onSend }) => {
   const [language, setLanguage] = useState('en');
   const [voiceAssistantOpen, setVoiceAssistantOpen] = useState(false);
   const [lastResponse, setLastResponse] = useState('');
+  const [anchorEl, setAnchorEl] = useState(null);
   const { currentChatId, isDarkMode, chats } = useChat();
+  
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const lawQueries = [
     "What are the provisions under Section 302 IPC?",
@@ -104,11 +109,18 @@ const InputBox = ({ queryType, onQueryTypeChange, onSend }) => {
         apiMessage = `${voiceMessage}\n\nRespond in ${langName}`;
       }
       
-      // Send directly to backend without updating input box
       await onSend(apiMessage, voiceMessage);
       return true;
     }
     return false;
+  };
+
+  const handleMenuOpen = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
   };
 
   return (
@@ -117,7 +129,7 @@ const InputBox = ({ queryType, onQueryTypeChange, onSend }) => {
         component="form"
         onSubmit={handleSubmit}
         sx={{
-          p: 2,
+          p: { xs: 1, sm: 2 },
           borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
           position: 'sticky',
           bottom: 0,
@@ -130,85 +142,221 @@ const InputBox = ({ queryType, onQueryTypeChange, onSend }) => {
           flexDirection: 'column',
           maxWidth: '800px', 
           margin: '0 auto',
-          gap: 2,
+          gap: { xs: 1, sm: 2 },
         }}>
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: 2
-          }}>
-            <ToggleButtonGroup
-              value={queryType}
-              exclusive
-              onChange={onQueryTypeChange}
-              aria-label="query type"
-              size="small"
-              sx={{
-                alignSelf: 'center',
-                bgcolor: isDarkMode ? '#252534' : 'white',
-                '& .MuiToggleButton-root': {
-                  px: 3,
-                  py: 0.5,
-                  color: isDarkMode ? 'white' : 'text.primary',
-                  borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.12)',
-                  '&.Mui-selected': {
-                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
-                    color: isDarkMode ? 'white' : 'primary.main'
+          {/* Desktop controls */}
+          {!isMobile && (
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: 2
+            }}>
+              <ToggleButtonGroup
+                value={queryType}
+                exclusive
+                onChange={onQueryTypeChange}
+                aria-label="query type"
+                size="small"
+                sx={{
+                  alignSelf: 'center',
+                  bgcolor: isDarkMode ? '#252534' : 'white',
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  '& .MuiToggleButton-root': {
+                    px: 3,
+                    py: 0.7,
+                    color: isDarkMode ? 'white' : 'text.primary',
+                    borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.12)',
+                    transition: 'all 0.2s ease',
+                    '&.Mui-selected': {
+                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.15)' : theme.palette.primary.light,
+                      color: isDarkMode ? 'white' : 'white',
+                      fontWeight: 500
+                    },
+                    '&:hover': {
+                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)'
+                    }
                   }
-                }
-              }}
-            >
-              <ToggleButton value="laws" aria-label="laws">
-                <GavelIcon sx={{ mr: 1, fontSize: 20 }} />
-                Laws
-              </ToggleButton>
-              <ToggleButton value="judgements" aria-label="judgements">
-                <HistoryIcon sx={{ mr: 1, fontSize: 20 }} />
-                Judgements
-              </ToggleButton>
-            </ToggleButtonGroup>
-
-            <FormControl 
-              size="small"
-              sx={{
-                minWidth: 120,
-                bgcolor: isDarkMode ? '#252534' : 'white',
-                borderRadius: 1,
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.12)'
-                },
-                '& .MuiSelect-select': {
-                  color: isDarkMode ? 'white' : 'text.primary',
-                },
-                '& .MuiSvgIcon-root': {
-                  color: isDarkMode ? 'white' : 'text.primary',
-                }
-              }}
-            >
-              <Select
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-                displayEmpty
-                startAdornment={<TranslateIcon sx={{ mr: 1, fontSize: 20 }} />}
+                }}
               >
-                {LANGUAGES.map((lang) => (
-                  <MenuItem key={lang.code} value={lang.code}>
-                    {lang.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Box>
+                <ToggleButton value="laws" aria-label="laws">
+                  <GavelIcon sx={{ mr: 1, fontSize: 20 }} />
+                  Laws
+                </ToggleButton>
+                <ToggleButton value="judgements" aria-label="judgements">
+                  <HistoryIcon sx={{ mr: 1, fontSize: 20 }} />
+                  Judgements
+                </ToggleButton>
+              </ToggleButtonGroup>
+
+              <FormControl 
+                size="small"
+                sx={{
+                  minWidth: 140,
+                  bgcolor: isDarkMode ? '#252534' : 'white',
+                  borderRadius: 2,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.12)',
+                    transition: 'border-color 0.2s ease'
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: isDarkMode ? 'rgba(255,255,255,0.4)' : theme.palette.primary.light
+                  },
+                  '& .MuiSelect-select': {
+                    color: isDarkMode ? 'white' : 'text.primary',
+                    py: 1
+                  },
+                  '& .MuiSvgIcon-root': {
+                    color: isDarkMode ? 'white' : 'text.primary',
+                  }
+                }}
+              >
+                <Select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  displayEmpty
+                  startAdornment={<TranslateIcon sx={{ mr: 1, fontSize: 20, color: theme.palette.primary.main }} />}
+                >
+                  {LANGUAGES.map((lang) => (
+                    <MenuItem key={lang.code} value={lang.code}>
+                      {lang.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+          )}
 
           <Box sx={{ 
             display: 'flex',
             gap: 1,
-            boxShadow: isDarkMode ? 'none' : '0 2px 4px rgba(0,0,0,0.05)',
+            boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
             borderRadius: 2,
-            p: 1,
+            p: { xs: 0.5, sm: 1 },
             bgcolor: isDarkMode ? '#252534' : 'white'
           }}>
+            {/* Mobile menu button */}
+            {isMobile && (
+              <>
+                <IconButton
+                  onClick={handleMenuOpen}
+                  sx={{
+                    color: isDarkMode ? 'rgba(255,255,255,0.7)' : theme.palette.primary.main,
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)',
+                      transform: 'scale(1.05)'
+                    }
+                  }}
+                >
+                  <MoreVertIcon />
+                </IconButton>
+                
+                <Menu
+                  anchorEl={anchorEl}
+                  open={Boolean(anchorEl)}
+                  onClose={handleMenuClose}
+                  PaperProps={{
+                    sx: {
+                      mt: 1,
+                      minWidth: 220,
+                      maxWidth: '90vw',
+                      bgcolor: isDarkMode ? '#252534' : 'white',
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                      borderRadius: 2,
+                      '& .MuiMenuItem-root': {
+                        py: 1.5,
+                        transition: 'background-color 0.2s ease',
+                        color: isDarkMode ? 'white' : 'text.primary',
+                        '&:hover': {
+                          bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)'
+                        }
+                      }
+                    }
+                  }}
+                  transformOrigin={{ horizontal: 'left', vertical: 'top' }}
+                  anchorOrigin={{ horizontal: 'left', vertical: 'bottom' }}
+                >
+                  <MenuItem onClick={() => { 
+                    onQueryTypeChange(null, 'laws');
+                    handleMenuClose();
+                  }}
+                  sx={{ 
+                    bgcolor: queryType === 'laws' ? 
+                      (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(25, 118, 210, 0.08)') : 
+                      'transparent'
+                  }}
+                  >
+                    <GavelIcon sx={{ 
+                      mr: 2, 
+                      fontSize: 22,
+                      color: theme.palette.primary.main
+                    }} />
+                    Laws
+                  </MenuItem>
+                  <MenuItem 
+                    onClick={() => {
+                      onQueryTypeChange(null, 'judgements');
+                      handleMenuClose();
+                    }}
+                    sx={{ 
+                      bgcolor: queryType === 'judgements' ? 
+                        (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(25, 118, 210, 0.08)') : 
+                        'transparent'
+                    }}
+                  >
+                    <HistoryIcon sx={{ 
+                      mr: 2, 
+                      fontSize: 22,
+                      color: theme.palette.primary.main
+                    }} />
+                    Judgements
+                  </MenuItem>
+                  <MenuItem 
+                    sx={{ 
+                      borderTop: '1px solid', 
+                      borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                      py: 2
+                    }}
+                  >
+                    <TranslateIcon sx={{ 
+                      mr: 2, 
+                      fontSize: 22,
+                      color: theme.palette.primary.main
+                    }} />
+                    <FormControl fullWidth size="small">
+                      <Select
+                        value={language}
+                        onChange={(e) => {
+                          setLanguage(e.target.value);
+                          handleMenuClose();
+                        }}
+                        sx={{ 
+                          ml: -1,
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.12)'
+                          },
+                          '&:hover .MuiOutlinedInput-notchedOutline': {
+                            borderColor: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)'
+                          },
+                          '& .MuiSelect-select': {
+                            color: isDarkMode ? 'white' : 'text.primary',
+                          }
+                        }}
+                      >
+                        {LANGUAGES.map((lang) => (
+                          <MenuItem key={lang.code} value={lang.code}>
+                            {lang.name}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </MenuItem>
+                </Menu>
+              </>
+            )}
+            
             <TextField
               fullWidth
               multiline
@@ -229,10 +377,14 @@ const InputBox = ({ queryType, onQueryTypeChange, onSend }) => {
                   },
                   '&:hover fieldset': {
                     borderColor: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)'
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: theme.palette.primary.main
                   }
                 },
                 '& .MuiInputBase-input::placeholder': {
-                  color: isDarkMode ? 'rgba(255,255,255,0.5)' : 'text.secondary'
+                  color: isDarkMode ? 'rgba(255,255,255,0.5)' : 'text.secondary',
+                  opacity: 0.8
                 }
               }}
             />
@@ -242,10 +394,12 @@ const InputBox = ({ queryType, onQueryTypeChange, onSend }) => {
               <IconButton
                 onClick={handleVoiceAssistant}
                 sx={{
-                  color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'text.secondary',
+                  color: isDarkMode ? 'rgba(255,255,255,0.7)' : theme.palette.primary.main,
+                  transition: 'all 0.2s ease',
                   '&:hover': {
-                    color: 'primary.main',
-                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)'
+                    color: theme.palette.primary.main,
+                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)',
+                    transform: 'scale(1.05)'
                   }
                 }}
               >
@@ -258,7 +412,19 @@ const InputBox = ({ queryType, onQueryTypeChange, onSend }) => {
               color="primary"
               disabled={!message.trim() || !currentChatId}
               sx={{
-                color: isDarkMode ? 'white' : 'primary.main'
+                color: !message.trim() || !currentChatId 
+                  ? (isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)') 
+                  : (isDarkMode ? 'white' : theme.palette.primary.main),
+                bgcolor: !message.trim() || !currentChatId 
+                  ? 'transparent'
+                  : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(25, 118, 210, 0.08)'),
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  bgcolor: !message.trim() || !currentChatId 
+                    ? 'transparent'
+                    : (isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(25, 118, 210, 0.15)'),
+                  transform: !message.trim() || !currentChatId ? 'none' : 'scale(1.05)'
+                }
               }}
             >
               <SendIcon />

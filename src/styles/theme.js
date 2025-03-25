@@ -23,8 +23,57 @@ export const theme = createTheme({
       'Arial',
       'sans-serif'
     ].join(','),
-    h1: { fontWeight: 700 },
-    h2: { fontWeight: 600 },
-    h3: { fontWeight: 600 }
-  }
+    h1: { 
+      fontWeight: 700,
+      fontSize: '3rem',
+      '@media (max-width:600px)': {
+        fontSize: '2rem',
+      },
+    },
+    h2: { 
+      fontWeight: 600,
+      fontSize: '2.5rem',
+      '@media (max-width:600px)': {
+        fontSize: '1.8rem',
+      },
+    },
+    h3: { 
+      fontWeight: 600,
+      fontSize: '2rem',
+      '@media (max-width:600px)': {
+        fontSize: '1.5rem',
+      },
+    }
+  },
+  components: {
+    MuiContainer: {
+      styleOverrides: {
+        root: {
+          paddingLeft: 16,
+          paddingRight: 16,
+          '@media (min-width:600px)': {
+            paddingLeft: 24,
+            paddingRight: 24,
+          },
+        },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+          borderRadius: 8,
+        },
+      },
+    },
+  },
+  breakpoints: {
+    values: {
+      xs: 0,
+      sm: 600,
+      md: 960,
+      lg: 1280,
+      xl: 1920,
+    },
+  },
 });

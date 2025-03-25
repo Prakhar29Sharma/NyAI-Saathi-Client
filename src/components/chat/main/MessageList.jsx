@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Box, Typography, Avatar, IconButton, Tooltip } from '@mui/material';
+import { Box, Typography, Avatar, IconButton, Tooltip, useMediaQuery, useTheme } from '@mui/material';
 import ReactMarkdown from 'react-markdown';
 import PersonIcon from '@mui/icons-material/Person';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
@@ -23,6 +23,9 @@ const MessageList = ({ messages = [], isTyping = false }) => {
   const { isDarkMode } = useChat();
   const [speakingMessageId, setSpeakingMessageId] = useState(null);
   const [currentUtterance, setCurrentUtterance] = useState(null);
+  
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   // Load available voices when component mounts
   useEffect(() => {
@@ -73,10 +76,10 @@ const MessageList = ({ messages = [], isTyping = false }) => {
       sx={{
         flex: 1,
         overflow: 'auto',
-        p: 3,
+        p: { xs: 1, sm: 2, md: 3 },
         display: 'flex',
         flexDirection: 'column',
-        gap: 3,
+        gap: { xs: 2, sm: 3 },
         bgcolor: isDarkMode ? '#1e1e2e' : '#f5f5f5',
       }}
     >
@@ -85,47 +88,49 @@ const MessageList = ({ messages = [], isTyping = false }) => {
           key={message.id}
           sx={{
             display: 'flex',
-            gap: 2,
+            gap: { xs: 1, sm: 2 },
             maxWidth: '800px',
             margin: '0 auto',
             width: '100%',
             bgcolor: isDarkMode 
               ? (message.isUser ? '#2d2d3a' : '#252534') 
               : (message.isUser ? '#e3f2fd' : 'white'),
-            p: 2,
+            p: { xs: 1.5, sm: 2 },
             borderRadius: 2,
             boxShadow: isDarkMode 
               ? 'none' 
               : '0 2px 4px rgba(0,0,0,0.05)'
           }}
         >
-          {/* Replace Avatar with logo or user icon */}
-          <Box
-            sx={{
-              width: 40, 
-              height: 40,
-              borderRadius: message.isUser ? '50%' : '8px',
-              overflow: 'hidden',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              bgcolor: message.isUser ? 'primary.main' : 'transparent'
-            }}
-          >
-            {message.isUser ? (
-              <PersonIcon style={{ color: '#fff' }} />
-            ) : (
-              <img 
-                src={NyaiLogo} 
-                alt="Nyai Saathi" 
-                style={{ 
-                  width: 40, 
-                  height: 40, 
-                  objectFit: 'contain'
-                }} 
-              />
-            )}
-          </Box>
+          {/* Avatar - conditionally hide on very small screens */}
+          {!isMobile && (
+            <Box
+              sx={{
+                width: 40, 
+                height: 40,
+                borderRadius: message.isUser ? '50%' : '8px',
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                bgcolor: message.isUser ? 'primary.main' : 'transparent'
+              }}
+            >
+              {message.isUser ? (
+                <PersonIcon style={{ color: '#fff' }} />
+              ) : (
+                <img 
+                  src={NyaiLogo} 
+                  alt="Nyai Saathi" 
+                  style={{ 
+                    width: 40, 
+                    height: 40, 
+                    objectFit: 'contain'
+                  }} 
+                />
+              )}
+            </Box>
+          )}
 
           <Box sx={{ flex: 1 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -143,10 +148,10 @@ const MessageList = ({ messages = [], isTyping = false }) => {
                             my: 1,
                             color: isDarkMode ? 'white' : 'text.primary',
                             fontFamily: '"Noto Sans", "Noto Sans Devanagari", "Noto Sans Bengali", system-ui, sans-serif',
-                            fontSize: '1rem',
+                            fontSize: { xs: '0.95rem', sm: '1rem' },
                             lineHeight: 1.6,
                             '& :lang(hi), & :lang(mr), & :lang(kn), & :lang(gu), & :lang(bn), & :lang(ta), & :lang(te)': {
-                              fontSize: '1.1rem',
+                              fontSize: { xs: '1.05rem', sm: '1.1rem' },
                               lineHeight: 1.8
                             }
                           }}
@@ -159,12 +164,12 @@ const MessageList = ({ messages = [], isTyping = false }) => {
                           component="pre"
                           sx={{
                             bgcolor: isDarkMode ? 'rgba(0,0,0,0.3)' : '#f5f5f5',
-                            p: 2,
+                            p: { xs: 1, sm: 2 },
                             borderRadius: 1,
                             overflow: 'auto',
                             color: isDarkMode ? 'white' : 'text.primary',
                             fontFamily: '"Roboto Mono", monospace',
-                            fontSize: '0.9rem',
+                            fontSize: { xs: '0.8rem', sm: '0.9rem' },
                             '& code': {
                               color: isDarkMode ? '#a6e22e' : '#2f6f4f'
                             }
@@ -181,7 +186,7 @@ const MessageList = ({ messages = [], isTyping = false }) => {
                             p: 0.5,
                             borderRadius: 0.5,
                             fontFamily: '"Roboto Mono", monospace',
-                            fontSize: '0.9rem',
+                            fontSize: { xs: '0.8rem', sm: '0.9rem' },
                             color: isDarkMode ? '#a6e22e' : '#2f6f4f'
                           }}
                         >
@@ -196,7 +201,8 @@ const MessageList = ({ messages = [], isTyping = false }) => {
                             mb: 1.5,
                             color: isDarkMode ? 'white' : 'text.primary',
                             fontFamily: '"Noto Sans", system-ui, sans-serif',
-                            fontWeight: 600
+                            fontWeight: 600,
+                            fontSize: { xs: '1.2rem', sm: '1.5rem' }
                           }}
                         >
                           {children}
@@ -210,7 +216,8 @@ const MessageList = ({ messages = [], isTyping = false }) => {
                             mb: 1,
                             color: isDarkMode ? 'white' : 'text.primary',
                             fontFamily: '"Noto Sans", system-ui, sans-serif',
-                            fontWeight: 600
+                            fontWeight: 600,
+                            fontSize: { xs: '1.1rem', sm: '1.25rem' }
                           }}
                         >
                           {children}
@@ -227,7 +234,7 @@ const MessageList = ({ messages = [], isTyping = false }) => {
                   <Tooltip title={speakingMessageId === message.id ? "Stop Speaking" : "Read Aloud"}>
                     <IconButton 
                       onClick={() => handleSpeak(message)}
-                      size="small"
+                      size={isMobile ? "small" : "medium"}
                       sx={{
                         ml: 1,
                         color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'text.secondary',
@@ -240,8 +247,8 @@ const MessageList = ({ messages = [], isTyping = false }) => {
                       }}
                     >
                       {speakingMessageId === message.id ? 
-                        <VolumeOffIcon fontSize="small" /> : 
-                        <VolumeUpIcon fontSize="small" />
+                        <VolumeOffIcon fontSize={isMobile ? "small" : "small"} /> : 
+                        <VolumeUpIcon fontSize={isMobile ? "small" : "small"} />
                       }
                     </IconButton>
                   </Tooltip>
@@ -254,7 +261,8 @@ const MessageList = ({ messages = [], isTyping = false }) => {
               sx={{ 
                 color: isDarkMode ? 'rgba(255,255,255,0.5)' : 'text.secondary',
                 mt: 1, 
-                display: 'block' 
+                display: 'block',
+                fontSize: { xs: '0.65rem', sm: '0.75rem' }
               }}
             >
               {formatTime(message.timestamp)}
@@ -268,39 +276,41 @@ const MessageList = ({ messages = [], isTyping = false }) => {
         <Box
           sx={{
             display: 'flex',
-            gap: 2,
+            gap: { xs: 1, sm: 2 },
             maxWidth: '800px',
             margin: '0 auto',
             width: '100%',
             bgcolor: isDarkMode ? '#444654' : 'grey.50',
-            p: 2,
+            p: { xs: 1.5, sm: 2 },
             borderRadius: 2
           }}
         >
           {/* Update the typing indicator logo too */}
-          <Box
-            sx={{
-              width: 40, 
-              height: 40,
-              borderRadius: '8px',
-              overflow: 'hidden',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <img 
-              src={NyaiLogo} 
-              alt="Nyai Saathi" 
-              style={{ 
+          {!isMobile && (
+            <Box
+              sx={{
                 width: 40, 
-                height: 40, 
-                objectFit: 'contain'
-              }} 
-            />
-          </Box>
+                height: 40,
+                borderRadius: '8px',
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <img 
+                src={NyaiLogo} 
+                alt="Nyai Saathi" 
+                style={{ 
+                  width: 40, 
+                  height: 40, 
+                  objectFit: 'contain'
+                }} 
+              />
+            </Box>
+          )}
           <Box sx={{ flex: 1, display: 'flex', alignItems: 'center' }}>
-            <LoadingSpinner size={24} text="" showText={false} />
+            <LoadingSpinner size={isMobile ? 20 : 24} text="" showText={false} />
           </Box>
         </Box>
       )}
