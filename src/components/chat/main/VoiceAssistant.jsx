@@ -2,11 +2,15 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Box, Typography, IconButton, Dialog, 
   DialogContent, Fade, useMediaQuery, useTheme,
-  Button, Alert, CircularProgress
+  Button, Alert, CircularProgress, Fab, Collapse,
+  TextField, Tooltip
 } from '@mui/material';
 import MicIcon from '@mui/icons-material/Mic';
 import MicOffIcon from '@mui/icons-material/MicOff';
 import CloseIcon from '@mui/icons-material/Close';
+import SendIcon from '@mui/icons-material/Send';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import KeyboardIcon from '@mui/icons-material/Keyboard';
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 import { useChat } from '../../../context/ChatContext';
 import { LoadingSpinner } from '../../common';
@@ -82,7 +86,7 @@ const chunkText = (text, wordsPerChunk) => {
 
 const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse }) => {
   const { isDarkMode } = useChat();
-  // States: greeting, listening, processing, received, permission, error
+  // States: greeting, listening, processing, received, permission, error, manual
   const [status, setStatus] = useState('greeting'); 
   const [assistantText, setAssistantText] = useState('');
   const [processingText, setProcessingText] = useState('');
@@ -90,7 +94,13 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
   const [permissionError, setPermissionError] = useState(false);
   const [recognitionError, setRecognitionError] = useState('');
   const [isListeningActive, setIsListeningActive] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [manualInput, setManualInput] = useState('');
+  const [showManualInput, setShowManualInput] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
+  const [restartCount, setRestartCount] = useState(0);
   const recognitionTimeout = useRef(null);
+  const noSpeechTimeout = useRef(null);
   
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -105,6 +115,19 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
     isMicrophoneAvailable
   } = useSpeechRecognition();
 
+  // Detect Android devices - they often have issues with Web Speech API
+  useEffect(() => {
+    // Check if the device is Android
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isAndroidDevice = /android/.test(userAgent);
+    setIsAndroid(isAndroidDevice);
+    
+    // If it's Android, we might want to show different UI or instructions
+    if (isAndroidDevice && open) {
+      console.log("Android device detected - enabling compatibility mode");
+    }
+  }, [open]);
+
   // Check for microphone permission when opened
   useEffect(() => {
     if (open) {
@@ -116,9 +139,21 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
 
       const checkMicrophonePermission = async () => {
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          stream.getTracks().forEach(track => track.stop());
+          const stream = await navigator.mediaDevices.getUserMedia({ 
+            audio: { 
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true
+            } 
+          });
+          
+          // Keep the stream active to maintain microphone permission
+          window.activeStream = stream;
+          
           setPermissionError(false);
+          if (isAndroid) {
+            setAssistantText("Voice detection on Android may be unreliable. Hold the mic button to speak, or use the keyboard icon for text input.");
+          }
         } catch (err) {
           console.error('Microphone permission error:', err);
           setPermissionError(true);
@@ -128,8 +163,14 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
       };
       
       checkMicrophonePermission();
+    } else {
+      // Clean up stream when dialog closes
+      if (window.activeStream) {
+        window.activeStream.getTracks().forEach(track => track.stop());
+        window.activeStream = null;
+      }
     }
-  }, [open, browserSupportsSpeechRecognition]);
+  }, [open, browserSupportsSpeechRecognition, isAndroid]);
 
   // Step 1: Greet the user
   useEffect(() => {
@@ -139,8 +180,14 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
       setAssistantText('');
       resetTranscript();
       setRecognitionError('');
+      setManualInput('');
+      setShowManualInput(false);
+      setRestartCount(0);
       
-      const greetingText = "Hello! How can I help you today?";
+      const greetingText = isAndroid 
+        ? "Hello! On Android devices, you may need to hold the microphone button to speak, or use the keyboard icon for text input."
+        : "Hello! How can I help you today?";
+        
       setAssistantText(greetingText);
       
       // Slight delay before speaking to ensure dialog is visible
@@ -163,38 +210,81 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
       if (recognitionTimeout.current) {
         clearTimeout(recognitionTimeout.current);
       }
+      if (noSpeechTimeout.current) {
+        clearTimeout(noSpeechTimeout.current);
+      }
+      if (window.activeStream) {
+        window.activeStream.getTracks().forEach(track => track.stop());
+        window.activeStream = null;
+      }
     };
-  }, [open, resetTranscript, permissionError]);
+  }, [open, resetTranscript, permissionError, isAndroid]);
 
-  // Monitor listening status with a watchdog timer
+  // Monitor listening status with a more aggressive watchdog timer
   useEffect(() => {
     if (listening) {
       setIsListeningActive(true);
+      
       // Clear any previous timeout
       if (recognitionTimeout.current) {
         clearTimeout(recognitionTimeout.current);
       }
       
-      // Set a timeout to check if recognition is stalled (20 seconds)
+      if (noSpeechTimeout.current) {
+        clearTimeout(noSpeechTimeout.current);
+      }
+      
+      // Set a shorter timeout for Android devices (10s vs 20s)
+      const timeoutDuration = isAndroid ? 10000 : 20000;
+      
+      // Set a timeout to check if recognition is stalled
       recognitionTimeout.current = setTimeout(() => {
         // If still listening after timeout, try restarting
         if (listening) {
           console.log("Restarting speech recognition due to possible stall");
           SpeechRecognition.stopListening();
+          
+          // Increment restart counter
+          setRestartCount(prev => {
+            const newCount = prev + 1;
+            // If we've restarted too many times, suggest manual input
+            if (newCount > 2 && isAndroid) {
+              setShowManualInput(true);
+              setAssistantText("Voice recognition seems to be having trouble. You can use manual text input instead.");
+            }
+            return newCount;
+          });
+          
           setTimeout(() => {
             startListening();
           }, 500);
         }
-      }, 20000);
+      }, timeoutDuration);
+      
+      // Set another timeout specifically for no speech detection
+      if (!transcript.trim()) {
+        noSpeechTimeout.current = setTimeout(() => {
+          if (listening && !transcript.trim() && isAndroid) {
+            setAssistantText("I'm having trouble hearing you. Try holding the mic button while speaking, or use the keyboard for text input.");
+            setShowManualInput(true);
+          }
+        }, 8000);
+      }
     } else {
       if (isListeningActive && status === 'listening') {
         // If we were listening but stopped unexpectedly (not by our command)
         if (!transcript.trim()) {
-          // If no transcript, try again
-          console.log("Recognition stopped without input, restarting...");
-          setTimeout(() => {
-            startListening();
-          }, 300);
+          // If no transcript and we haven't restarted too many times
+          if (restartCount < 3) {
+            console.log("Recognition stopped without input, restarting...");
+            setTimeout(() => {
+              startListening();
+            }, 300);
+          } else if (isAndroid) {
+            // On Android, after multiple failed attempts, suggest manual input
+            setShowManualInput(true);
+            setAssistantText("Speech recognition isn't working well on your device. Please use the text input instead.");
+          }
         }
       }
     }
@@ -203,20 +293,74 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
       if (recognitionTimeout.current) {
         clearTimeout(recognitionTimeout.current);
       }
+      if (noSpeechTimeout.current) {
+        clearTimeout(noSpeechTimeout.current);
+      }
     };
-  }, [listening, status, transcript]);
+  }, [listening, status, transcript, isAndroid, restartCount]);
+  
+  // Clear the no speech timeout if transcript changes
+  useEffect(() => {
+    if (transcript.trim() && noSpeechTimeout.current) {
+      clearTimeout(noSpeechTimeout.current);
+    }
+  }, [transcript]);
   
   const startListening = () => {
     setStatus('listening');
     try {
-      SpeechRecognition.startListening({ 
-        continuous: true, 
+      // Use different settings for Android
+      const options = {
+        continuous: !isAndroid, // Non-continuous mode for Android to avoid issues
         language: 'en-IN',
         interimResults: true
-      });
+      };
+      
+      SpeechRecognition.startListening(options);
     } catch (err) {
       console.error("Error starting speech recognition:", err);
       setRecognitionError("There was a problem starting voice recognition.");
+      setShowManualInput(true);
+    }
+  };
+  
+  // For Android: manual recording control
+  const startRecording = () => {
+    setIsRecording(true);
+    resetTranscript();
+    try {
+      SpeechRecognition.startListening({ 
+        continuous: false,
+        language: 'en-IN',
+        interimResults: true 
+      });
+    } catch (err) {
+      console.error("Error in manual recording:", err);
+      setRecognitionError("Couldn't start recording. Please try text input instead.");
+      setShowManualInput(true);
+    }
+  };
+  
+  const stopRecording = () => {
+    setIsRecording(false);
+    SpeechRecognition.stopListening();
+    
+    // Process transcript after a short delay to ensure final results are captured
+    setTimeout(() => {
+      if (transcript.trim()) {
+        setStatus('processing');
+        setProcessingText(transcript);
+        handleProcessSpeech(transcript);
+      }
+    }, 300);
+  };
+  
+  // Handle manual text input
+  const handleManualSubmit = () => {
+    if (manualInput.trim()) {
+      setStatus('processing');
+      handleProcessSpeech(manualInput);
+      setManualInput('');
     }
   };
   
@@ -248,7 +392,8 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
   
   // Process user's speech for the query
   useEffect(() => {
-    if (status === 'listening' && transcript && transcript.trim().length > 0) {
+    // Only use automatic detection on non-Android devices or when not in manual recording mode
+    if (status === 'listening' && transcript && transcript.trim().length > 0 && !isRecording && !isAndroid) {
       // Stop listening after user finishes speaking (detected by pause)
       const timer = setTimeout(() => {
         if (transcript.trim().length > 0) {
@@ -259,11 +404,11 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
           // Process the request without affecting the input box
           handleProcessSpeech(transcript);
         }
-      }, isMobile ? 2000 : 1500); // Slightly longer timeout on mobile
+      }, isMobile ? 2500 : 1500); // Even longer timeout on mobile
       
       return () => clearTimeout(timer);
     }
-  }, [transcript, status]);
+  }, [transcript, status, isRecording, isAndroid]);
   
   // Process speech and get response
   const handleProcessSpeech = useCallback(async (text) => {
@@ -449,6 +594,27 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
           </IconButton>
         </Box>
         
+        {/* Help button for Android users */}
+        {isAndroid && (
+          <Box sx={{ 
+            position: 'absolute', 
+            top: 12, 
+            left: 12,
+            zIndex: 2
+          }}>
+            <Tooltip title="For Android users: Hold the microphone button while speaking, then release when done. Or use the keyboard button for text input.">
+              <IconButton 
+                size={isMobile ? "small" : "medium"}
+                sx={{ 
+                  color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' 
+                }}
+              >
+                <HelpOutlineIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        )}
+        
         {recognitionError && (
           <Alert 
             severity="warning" 
@@ -532,6 +698,23 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
             <Typography variant="caption" color="text.secondary">
               {listening ? 'Listening...' : status === 'processing' ? 'Processing...' : 'Ready'}
             </Typography>
+            
+            {/* Toggle for manual input */}
+            {(isAndroid || restartCount > 2) && status === 'listening' && (
+              <IconButton 
+                size="small" 
+                onClick={() => setShowManualInput(!showManualInput)}
+                sx={{ 
+                  ml: 1, 
+                  color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)',
+                  bgcolor: showManualInput ? 
+                    (isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)') : 
+                    'transparent'
+                }}
+              >
+                <KeyboardIcon fontSize="small" />
+              </IconButton>
+            )}
           </Box>
           
           {/* Main area with siri animation */}
@@ -548,9 +731,10 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
               {/* Siri waveform */}
               {(status === 'listening' || status === 'greeting') && (
                 <SiriWaveform 
-                  isActive={listening} 
+                  isActive={listening || isRecording} 
                   isDarkMode={isDarkMode}
                   size={isMobile ? 240 : 280}
+                  isAndroid={isAndroid}
                 />
               )}
               
@@ -637,8 +821,75 @@ const VoiceAssistant = ({ open, onClose, onSendMessage, queryType, lastResponse 
               {assistantText}
             </Typography>
             
-            {/* Mic toggle button - more prominent for mobile */}
-            {status === 'listening' && (
+            {/* Manual text input for Android users */}
+            <Collapse in={showManualInput && status === 'listening'}>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center',
+                gap: 1,
+                mb: 2,
+                mt: 1,
+                mx: 'auto',
+                width: '90%'
+              }}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="Type your question here..."
+                  value={manualInput}
+                  onChange={(e) => setManualInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleManualSubmit();
+                    }
+                  }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'white',
+                    }
+                  }}
+                />
+                <IconButton 
+                  color="primary" 
+                  onClick={handleManualSubmit}
+                  disabled={!manualInput.trim()}
+                >
+                  <SendIcon />
+                </IconButton>
+              </Box>
+            </Collapse>
+            
+            {/* Android-specific controls */}
+            {isAndroid && status === 'listening' && !showManualInput && (
+              <Fab
+                color="primary"
+                size="large"
+                onTouchStart={startRecording}
+                onMouseDown={startRecording}
+                onTouchEnd={stopRecording}
+                onMouseUp={stopRecording}
+                sx={{
+                  my: 2,
+                  boxShadow: isRecording ? 
+                    '0 0 0 8px rgba(25,118,210,0.2)' : 
+                    '0 3px 5px rgba(0,0,0,0.2)',
+                  transition: 'all 0.2s ease',
+                  transform: isRecording ? 'scale(1.1)' : 'scale(1)',
+                  animation: isRecording ? 'pulse-recording 1.5s infinite' : 'none',
+                  '@keyframes pulse-recording': {
+                    '0%': { boxShadow: '0 0 0 0 rgba(25,118,210,0.5)' },
+                    '70%': { boxShadow: '0 0 0 15px rgba(25,118,210,0)' },
+                    '100%': { boxShadow: '0 0 0 0 rgba(25,118,210,0)' }
+                  }
+                }}
+              >
+                <MicIcon fontSize="large" />
+              </Fab>
+            )}
+            
+            {/* Normal mic toggle button - non-Android only */}
+            {!isAndroid && status === 'listening' && (
               <IconButton
                 onClick={handleToggleListen}
                 size="large"

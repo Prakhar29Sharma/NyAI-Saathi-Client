@@ -390,7 +390,7 @@ const InputBox = ({ queryType, onQueryTypeChange, onSend }) => {
             />
             
             {/* Voice Assistant button */}
-            <Tooltip title="Voice Assistant (works best in Chrome desktop)">
+            <Tooltip title={isMobile ? "Voice Assistant (on Android, tap and hold the mic button when speaking)" : "Voice Assistant"}>
               <IconButton
                 onClick={handleVoiceAssistant}
                 sx={{
