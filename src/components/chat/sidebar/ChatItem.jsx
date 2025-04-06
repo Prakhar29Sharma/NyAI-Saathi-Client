@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
-import { ListItem, ListItemText, IconButton, TextField, Box, Typography } from '@mui/material';
+import { ListItem, ListItemText, IconButton, TextField, Box, Typography, useTheme, useMediaQuery } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
-import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import ArticleIcon from '@mui/icons-material/Article';
 import { useChat } from '../../../context/ChatContext';
 
-const ChatItem = ({ chat, isActive }) => {
+const ChatItem = ({ chat, isActive, onSelect }) => {
   const { setCurrentChatId, deleteChat, updateChatTitle, isDarkMode } = useChat();
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(chat.title);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const handleEdit = (e) => {
     e.stopPropagation();
@@ -37,13 +38,20 @@ const ChatItem = ({ chat, isActive }) => {
     deleteChat(chat.id);
   };
 
+  const handleChatSelect = () => {
+    if (!isEditing) {
+      setCurrentChatId(chat.id);
+      if (onSelect) onSelect();
+    }
+  };
+
   return (
     <ListItem
       button
-      onClick={() => !isEditing && setCurrentChatId(chat.id)}
+      onClick={handleChatSelect}
       sx={{
-        px: 2,
-        py: 1.5,
+        px: { xs: 2.5, sm: 2 },
+        py: { xs: 2, sm: 1.5 },
         bgcolor: isActive ? 
           (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(25, 118, 210, 0.08)') : 
           'transparent',
@@ -65,9 +73,9 @@ const ChatItem = ({ chat, isActive }) => {
     >
       <ArticleIcon 
         sx={{ 
-          mr: 2, 
+          mr: { xs: 2.5, sm: 2 }, 
           color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'text.secondary',
-          fontSize: 20
+          fontSize: { xs: 22, sm: 20 }
         }} 
       />
       
@@ -76,7 +84,7 @@ const ChatItem = ({ chat, isActive }) => {
           flex: 1, 
           display: 'flex', 
           alignItems: 'center', 
-          gap: 1 
+          gap: { xs: 1.5, sm: 1 } 
         }}>
           <TextField
             fullWidth
@@ -87,6 +95,8 @@ const ChatItem = ({ chat, isActive }) => {
             sx={{
               '& .MuiInputBase-root': {
                 color: isDarkMode ? 'white' : 'inherit',
+                fontSize: { xs: '1rem', sm: 'inherit' },
+                padding: { xs: '10px 14px', sm: '8px 14px' },
                 '& fieldset': {
                   borderColor: isDarkMode ? 
                     'rgba(255,255,255,0.3)' : 
@@ -95,11 +105,11 @@ const ChatItem = ({ chat, isActive }) => {
               }
             }}
           />
-          <IconButton size="small" onClick={handleSave}>
-            <CheckIcon sx={{ color: 'success.main', fontSize: 18 }} />
+          <IconButton size={isMobile ? "medium" : "small"} onClick={handleSave}>
+            <CheckIcon sx={{ color: 'success.main', fontSize: { xs: 20, sm: 18 } }} />
           </IconButton>
-          <IconButton size="small" onClick={handleCancel}>
-            <CloseIcon sx={{ color: 'error.main', fontSize: 18 }} />
+          <IconButton size={isMobile ? "medium" : "small"} onClick={handleCancel}>
+            <CloseIcon sx={{ color: 'error.main', fontSize: { xs: 20, sm: 18 } }} />
           </IconButton>
         </Box>
       ) : (
@@ -111,7 +121,8 @@ const ChatItem = ({ chat, isActive }) => {
                 noWrap
                 sx={{ 
                   color: isDarkMode ? 'white' : 'text.primary',
-                  fontWeight: isActive ? 500 : 400
+                  fontWeight: isActive ? 500 : 400,
+                  fontSize: { xs: '1rem', sm: 'inherit' }
                 }}
               >
                 {chat.title}
@@ -123,7 +134,8 @@ const ChatItem = ({ chat, isActive }) => {
                 sx={{ 
                   color: isDarkMode ? 
                     'rgba(255,255,255,0.5)' : 
-                    'text.secondary'
+                    'text.secondary',
+                  fontSize: { xs: '0.8rem', sm: 'inherit' }
                 }}
               >
                 {new Date(chat.timestamp).toLocaleDateString()}
@@ -133,18 +145,19 @@ const ChatItem = ({ chat, isActive }) => {
           <Box 
             className="action-buttons"
             sx={{ 
-              opacity: 0,
-              visibility: 'hidden',
+              opacity: { xs: 1, md: 0 },
+              visibility: { xs: 'visible', md: 'hidden' },
               transition: 'all 0.2s ease',
               display: 'flex',
-              gap: 0.5
+              gap: { xs: 1, sm: 0.5 }
             }}
           >
             <IconButton 
-              size="small" 
+              size={isMobile ? "medium" : "small"} 
               onClick={handleEdit}
               sx={{
                 color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'text.secondary',
+                padding: { xs: '8px', sm: '4px' },
                 '&:hover': {
                   bgcolor: isDarkMode ? 
                     'rgba(255,255,255,0.1)' : 
@@ -152,13 +165,14 @@ const ChatItem = ({ chat, isActive }) => {
                 }
               }}
             >
-              <EditIcon sx={{ fontSize: 18 }} />
+              <EditIcon sx={{ fontSize: { xs: 20, sm: 18 } }} />
             </IconButton>
             <IconButton 
-              size="small" 
+              size={isMobile ? "medium" : "small"} 
               onClick={handleDelete}
               sx={{
                 color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'text.secondary',
+                padding: { xs: '8px', sm: '4px' },
                 '&:hover': {
                   color: 'error.main',
                   bgcolor: isDarkMode ? 
@@ -167,7 +181,7 @@ const ChatItem = ({ chat, isActive }) => {
                 }
               }}
             >
-              <DeleteIcon sx={{ fontSize: 18 }} />
+              <DeleteIcon sx={{ fontSize: { xs: 20, sm: 18 } }} />
             </IconButton>
           </Box>
         </>

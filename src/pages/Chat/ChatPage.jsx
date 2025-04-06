@@ -1,11 +1,14 @@
 import React from 'react';
-import { Box } from '@mui/material';
+import { Box, useMediaQuery, useTheme } from '@mui/material';
 import Sidebar from '../../components/chat/sidebar/Sidebar';
 import ChatArea from '../../components/chat/main/ChatArea';
 import { useChat } from '../../context/ChatContext';
 
 const ChatPage = () => {
+  // eslint-disable-next-line no-unused-vars
   const { chats } = useChat();
+  const theme = useTheme();
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
 
   return (
     <Box 
@@ -17,7 +20,9 @@ const ChatPage = () => {
         overflow: 'hidden'
       }}
     >
-      <Sidebar />
+      {/* Show sidebar permanently only on desktop */}
+      {isDesktop && <Sidebar />}
+      
       <Box 
         component="main" 
         sx={{ 

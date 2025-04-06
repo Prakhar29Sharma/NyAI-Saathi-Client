@@ -2,19 +2,44 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <!-- Favicon links -->
+    <link rel="icon" href="%PUBLIC_URL%/assets/favicon/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="%PUBLIC_URL%/assets/favicon/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="%PUBLIC_URL%/assets/favicon/favicon-16x16.png" />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/assets/favicon/apple-touch-icon.png" />
+    
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#000000" />
-    <meta
-      name="description"
-      content="Web site created using create-react-app"
-    />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <!--
-      manifest.json provides metadata used when your web app is installed on a
-      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
-    -->
+    
+    <!-- Primary Meta Tags -->
+    <title>NyAI Saathi</title>
+    <meta name="title" content="NyAI Saathi" />
+    <meta name="description" content="NyAI Saathi is an AI-powered legal research assistant designed to improve the efficiency and precision of the retrieval of legal information. Using retrieval-augmented generation (RAG) and vector-based semantic search to provide users, such as lawyers, law students, researchers and other legal professionals, with contextually accurate legal answers, along with references to authoritative legal documents" />
+    <meta name="keywords" content="legal research, AI legal assistant, law technology, legal information retrieval, RAG, semantic search, legal tech, Indian legal assistant" />
+    <meta name="author" content="NyAI Team" />
+    <meta name="robots" content="index, follow" />
+    <meta name="language" content="English" />
+    <link rel="canonical" href="https://nyaisaathi.tech" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://nyaisaathi.tech" />
+    <meta property="og:title" content="NyAI Saathi" />
+    <meta property="og:description" content="NyAI Saathi is an AI-powered legal research assistant designed to improve the efficiency and precision of the retrieval of legal information. Using retrieval-augmented generation (RAG) and vector-based semantic search to provide users, such as lawyers, law students, researchers and other legal professionals, with contextually accurate legal answers, along with references to authoritative legal documents" />
+    <meta property="og:image" content="https://nyaisaathi.tech/assets/og-image.png" />
+    <meta property="og:site_name" content="NyAI Saathi" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://nyaisaathi.tech" />
+    <meta property="twitter:title" content="NyAI Saathi" />
+    <meta property="twitter:description" content="NyAI Saathi is an AI-powered legal research assistant designed to improve the efficiency and precision of the retrieval of legal information. Using retrieval-augmented generation (RAG) and vector-based semantic search to provide users, such as lawyers, law students, researchers and other legal professionals, with contextually accurate legal answers, along with references to authoritative legal documents" />
+    <meta property="twitter:image" content="https://nyaisaathi.tech/assets/og-image.png" />
+    
+    <!-- Manifest and fonts -->
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700&family=Noto+Sans+Devanagari:wght@400;500;700&family=Noto+Sans+Bengali:wght@400;500;700&family=Roboto+Mono&display=swap" rel="stylesheet">
     <!--
       Notice the use of %PUBLIC_URL% in the tags above.
       It will be replaced with the URL of the `public` folder during the build.
@@ -24,7 +49,25 @@
       work correctly both with client-side routing and a non-root public URL.
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
-    <title>React App</title>
+
+    <!-- Structured Data for SEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "NyAI Saathi",
+      "description": "AI-powered legal research assistant designed to improve the efficiency and precision of legal information retrieval",
+      "applicationCategory": "Legal",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "INR"
+      },
+      "url": "https://nyaisaathi.tech",
+      "keywords": "legal research, AI assistant, law technology, legal information"
+    }
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

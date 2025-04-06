@@ -3,7 +3,7 @@ import { List, Box, Typography } from '@mui/material';
 import ChatItem from './ChatItem';
 import { useChat } from '../../../context/ChatContext';
 
-const ChatList = () => {
+const ChatList = ({ onSelect }) => {
   const { chats, currentChatId, isDarkMode } = useChat();
 
   return (
@@ -20,6 +20,7 @@ const ChatList = () => {
               key={chat.id} 
               chat={chat} 
               isActive={chat.id === currentChatId} 
+              onSelect={onSelect}
             />
           ))}
         </List>
